@@ -8,10 +8,12 @@ import { Separator } from "@/components/ui/separator";
 import { Wrench, CreditCard, DollarSign, Star, Shield, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import RatingModal from "@/components/RatingModal";
 
 const PaymentFlow = () => {
   const [tipAmount, setTipAmount] = useState("");
   const [selectedTip, setSelectedTip] = useState("");
+  const [showRatingModal, setShowRatingModal] = useState(false);
   
   const jobDetails = {
     id: "JOB-001",
@@ -30,6 +32,11 @@ const PaymentFlow = () => {
   };
 
   const total = jobDetails.baseCost + jobDetails.serviceFee + (tipAmount ? parseFloat(tipAmount) : 0);
+
+  const handleCompletePayment = () => {
+    // After payment is processed, show the rating modal
+    setShowRatingModal(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -80,37 +87,6 @@ const PaymentFlow = () => {
                     <span className="font-medium">{jobDetails.rating}/5</span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Rate Your Experience */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Rate Your Experience</CardTitle>
-              <CardDescription>How was your service today?</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center space-x-2 mb-4">
-                {[1, 2, 3, 4, 5].map((rating) => (
-                  <Button
-                    key={rating}
-                    variant="outline"
-                    size="sm"
-                    className="p-2"
-                  >
-                    <Star className="h-5 w-5" />
-                  </Button>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="review">Leave a review (optional)</Label>
-                <textarea
-                  id="review"
-                  className="w-full p-3 border rounded-lg resize-none"
-                  rows={3}
-                  placeholder="Share your experience..."
-                />
               </div>
             </CardContent>
           </Card>
@@ -222,7 +198,7 @@ const PaymentFlow = () => {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            <Button className="w-full" size="lg">
+            <Button className="w-full" size="lg" onClick={handleCompletePayment}>
               Complete Payment - ${total.toFixed(2)}
             </Button>
             <Button variant="outline" className="w-full">
@@ -231,6 +207,15 @@ const PaymentFlow = () => {
           </div>
         </div>
       </div>
+
+      {/* Rating Modal */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        providerName={jobDetails.provider}
+        serviceType={jobDetails.service}
+        jobId={jobDetails.id}
+      />
     </div>
   );
 };
