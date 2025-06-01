@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench, User, UserCheck } from "lucide-react";
+import { Wrench, User, UserCheck, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,8 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 const Login = () => {
   const [customerData, setCustomerData] = useState({ email: '', password: '' });
   const [providerData, setProviderData] = useState({ email: '', password: '' });
+  const [adminData, setAdminData] = useState({ email: '', password: '' });
   const [isCustomerSubmitting, setIsCustomerSubmitting] = useState(false);
   const [isProviderSubmitting, setIsProviderSubmitting] = useState(false);
+  const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -22,10 +24,7 @@ const Login = () => {
     setIsCustomerSubmitting(true);
     
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate random success/failure for demo
       const isSuccess = Math.random() > 0.3;
       
       if (isSuccess) {
@@ -33,10 +32,7 @@ const Login = () => {
           title: "Login Successful!",
           description: "Welcome back! Redirecting to your dashboard...",
         });
-        
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1000);
+        setTimeout(() => navigate('/dashboard'), 1000);
       } else {
         toast({
           title: "Login Failed",
@@ -60,10 +56,7 @@ const Login = () => {
     setIsProviderSubmitting(true);
     
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate random success/failure for demo
       const isSuccess = Math.random() > 0.3;
       
       if (isSuccess) {
@@ -71,10 +64,7 @@ const Login = () => {
           title: "Login Successful!",
           description: "Welcome back! Redirecting to your provider dashboard...",
         });
-        
-        setTimeout(() => {
-          navigate('/provider/dashboard');
-        }, 1000);
+        setTimeout(() => navigate('/provider/dashboard'), 1000);
       } else {
         toast({
           title: "Login Failed",
@@ -93,6 +83,40 @@ const Login = () => {
     }
   };
 
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAdminSubmitting(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Check for admin credentials (you can customize this)
+      const isValidAdmin = adminData.email === 'admin@mytireplug.com' && adminData.password === 'admin123';
+      
+      if (isValidAdmin) {
+        toast({
+          title: "Admin Login Successful!",
+          description: "Welcome to the admin panel! Redirecting...",
+        });
+        setTimeout(() => navigate('/admin'), 1000);
+      } else {
+        toast({
+          title: "Admin Login Failed",
+          description: "Invalid admin credentials. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: "Network error. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAdminSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -107,7 +131,7 @@ const Login = () => {
         </div>
 
         <Tabs defaultValue="customer" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="customer" className="flex items-center space-x-2">
               <User className="h-4 w-4" />
               <span>Customer</span>
@@ -115,6 +139,10 @@ const Login = () => {
             <TabsTrigger value="provider" className="flex items-center space-x-2">
               <UserCheck className="h-4 w-4" />
               <span>Provider</span>
+            </TabsTrigger>
+            <TabsTrigger value="admin" className="flex items-center space-x-2">
+              <Shield className="h-4 w-4" />
+              <span>Admin</span>
             </TabsTrigger>
           </TabsList>
 
@@ -207,6 +235,51 @@ const Login = () => {
                   <Link to="/provider/register" className="text-sm text-blue-600 hover:underline">
                     Don't have an account? Apply now
                   </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="admin">
+            <Card>
+              <CardHeader>
+                <CardTitle>Admin Login</CardTitle>
+                <CardDescription>
+                  Access the administrative panel
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleAdminLogin}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-email">Admin Email</Label>
+                      <Input 
+                        id="admin-email" 
+                        type="email" 
+                        placeholder="Enter admin email"
+                        value={adminData.email}
+                        onChange={(e) => setAdminData({...adminData, email: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password">Password</Label>
+                      <Input 
+                        id="admin-password" 
+                        type="password" 
+                        placeholder="Enter admin password"
+                        value={adminData.password}
+                        onChange={(e) => setAdminData({...adminData, password: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isAdminSubmitting}>
+                      {isAdminSubmitting ? "Signing In..." : "Sign In"}
+                    </Button>
+                  </div>
+                </form>
+                <div className="text-center text-xs text-gray-500 mt-4">
+                  Demo: admin@mytireplug.com / admin123
                 </div>
               </CardContent>
             </Card>
