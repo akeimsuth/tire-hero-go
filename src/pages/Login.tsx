@@ -5,9 +5,94 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench, User, UserCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
+  const [customerData, setCustomerData] = useState({ email: '', password: '' });
+  const [providerData, setProviderData] = useState({ email: '', password: '' });
+  const [isCustomerSubmitting, setIsCustomerSubmitting] = useState(false);
+  const [isProviderSubmitting, setIsProviderSubmitting] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleCustomerLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCustomerSubmitting(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate random success/failure for demo
+      const isSuccess = Math.random() > 0.3;
+      
+      if (isSuccess) {
+        toast({
+          title: "Login Successful!",
+          description: "Welcome back! Redirecting to your dashboard...",
+        });
+        
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1000);
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Invalid email or password. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: "Network error. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCustomerSubmitting(false);
+    }
+  };
+
+  const handleProviderLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProviderSubmitting(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate random success/failure for demo
+      const isSuccess = Math.random() > 0.3;
+      
+      if (isSuccess) {
+        toast({
+          title: "Login Successful!",
+          description: "Welcome back! Redirecting to your provider dashboard...",
+        });
+        
+        setTimeout(() => {
+          navigate('/provider/dashboard');
+        }, 1000);
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Invalid email or password. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: "Network error. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProviderSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -42,15 +127,35 @@ const Login = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customer-email">Email</Label>
-                  <Input id="customer-email" type="email" placeholder="Enter your email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="customer-password">Password</Label>
-                  <Input id="customer-password" type="password" placeholder="Enter your password" />
-                </div>
-                <Button className="w-full">Sign In</Button>
+                <form onSubmit={handleCustomerLogin}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customer-email">Email</Label>
+                      <Input 
+                        id="customer-email" 
+                        type="email" 
+                        placeholder="Enter your email"
+                        value={customerData.email}
+                        onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="customer-password">Password</Label>
+                      <Input 
+                        id="customer-password" 
+                        type="password" 
+                        placeholder="Enter your password"
+                        value={customerData.password}
+                        onChange={(e) => setCustomerData({...customerData, password: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isCustomerSubmitting}>
+                      {isCustomerSubmitting ? "Signing In..." : "Sign In"}
+                    </Button>
+                  </div>
+                </form>
                 <div className="text-center">
                   <Link to="/customer/register" className="text-sm text-blue-600 hover:underline">
                     Don't have an account? Sign up
@@ -69,15 +174,35 @@ const Login = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="provider-email">Email</Label>
-                  <Input id="provider-email" type="email" placeholder="Enter your email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="provider-password">Password</Label>
-                  <Input id="provider-password" type="password" placeholder="Enter your password" />
-                </div>
-                <Button className="w-full">Sign In</Button>
+                <form onSubmit={handleProviderLogin}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="provider-email">Email</Label>
+                      <Input 
+                        id="provider-email" 
+                        type="email" 
+                        placeholder="Enter your email"
+                        value={providerData.email}
+                        onChange={(e) => setProviderData({...providerData, email: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="provider-password">Password</Label>
+                      <Input 
+                        id="provider-password" 
+                        type="password" 
+                        placeholder="Enter your password"
+                        value={providerData.password}
+                        onChange={(e) => setProviderData({...providerData, password: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isProviderSubmitting}>
+                      {isProviderSubmitting ? "Signing In..." : "Sign In"}
+                    </Button>
+                  </div>
+                </form>
                 <div className="text-center">
                   <Link to="/provider/register" className="text-sm text-blue-600 hover:underline">
                     Don't have an account? Apply now

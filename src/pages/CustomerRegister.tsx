@@ -1,11 +1,11 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const CustomerRegister = () => {
   const [formData, setFormData] = useState({
@@ -15,11 +15,57 @@ const CustomerRegister = () => {
     password: '',
     confirmPassword: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Customer registration:', formData);
-    // Handle registration logic here
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate random success/failure for demo
+      const isSuccess = Math.random() > 0.3;
+      
+      if (isSuccess) {
+        toast({
+          title: "Registration Successful!",
+          description: "Welcome to My Tire Plug! You can now start booking services.",
+        });
+        
+        // Redirect to dashboard after successful registration
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1000);
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Registration Failed",
+        description: "Network error. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,8 +161,8 @@ const CustomerRegister = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Create Account
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
           </CardContent>

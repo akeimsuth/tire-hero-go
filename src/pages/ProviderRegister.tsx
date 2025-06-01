@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Wrench, ArrowLeft, Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const ProviderRegister = () => {
   const [formData, setFormData] = useState({
@@ -24,6 +24,9 @@ const ProviderRegister = () => {
     languages: '',
     serviceTypes: [] as string[]
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const serviceTypes = [
     'Flat Tire Repair',
@@ -34,10 +37,62 @@ const ProviderRegister = () => {
     'Emergency Service'
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Provider registration:', formData);
-    // Handle registration logic here
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.serviceTypes.length === 0) {
+      toast({
+        title: "Service Types Required",
+        description: "Please select at least one service type you offer.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simulate random success/failure for demo
+      const isSuccess = Math.random() > 0.3;
+      
+      if (isSuccess) {
+        toast({
+          title: "Application Submitted!",
+          description: "Your provider application has been submitted successfully. We'll review it within 24 hours.",
+        });
+        
+        // Redirect to login after successful registration
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        toast({
+          title: "Application Failed",
+          description: "Something went wrong. Please check your information and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Application Failed",
+        description: "Network error. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -284,8 +339,8 @@ const ProviderRegister = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
-                Submit Application
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting Application..." : "Submit Application"}
               </Button>
             </form>
           </CardContent>
