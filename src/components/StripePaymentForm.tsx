@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,66 +15,65 @@ interface StripePaymentFormProps {
 }
 
 const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [saveCard, setSaveCard] = useState(false);
   const [cardholderName, setCardholderName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [cvv, setCvv] = useState("");
+  const [cardError, setCardError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#424770',
+        '::placeholder': {
+          color: '#aab7c4',
+        },
+        padding: '12px',
+      },
+      invalid: {
+        color: '#9e2146',
+      },
+    },
+    hidePostalCode: true,
+  };
+
+  const handleCardChange = (event: any) => {
+    if (event.error) {
+      setCardError(event.error.message);
+    } else {
+      setCardError(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
+    if (!stripe || !elements) {
+      toast({
+        title: "Stripe not loaded",
+        description: "Please wait for Stripe to load and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!cardholderName.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all card details",
+        description: "Please enter the cardholder name",
         variant: "destructive",
       });
       return;
     }
 
-    // Basic validation for card number (should be 16 digits)
-    const cleanCardNumber = cardNumber.replace(/\s/g, '');
-    if (cleanCardNumber.length < 15 || cleanCardNumber.length > 16) {
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
       toast({
-        title: "Invalid Card Number",
-        description: "Please enter a valid card number",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Basic validation for expiry date
-    const [month, year] = expiryDate.split('/');
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear() % 100; // Get last 2 digits
-    const currentMonth = currentDate.getMonth() + 1;
-    
-    if (!month || !year || parseInt(month) < 1 || parseInt(month) > 12) {
-      toast({
-        title: "Invalid Expiry Date",
-        description: "Please enter a valid expiry date",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
-      toast({
-        title: "Card Expired",
-        description: "Please use a card that has not expired",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Basic validation for CVV
-    if (cvv.length < 3 || cvv.length > 4) {
-      toast({
-        title: "Invalid CVV",
-        description: "Please enter a valid CVV",
+        title: "Card element not found",
+        description: "Please refresh the page and try again.",
         variant: "destructive",
       });
       return;
@@ -82,20 +82,33 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
-      // In a real implementation, you would:
-      // 1. Send card details securely to your backend
-      // 2. Create a payment intent on your backend using Stripe's server-side API
-      // 3. Handle the payment confirmation
-      
-      console.log('Processing payment with details:', {
-        amount: total,
-        cardholderName,
-        cardLast4: cleanCardNumber.slice(-4),
-        saveCard
+      // Create payment method
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: {
+          name: cardholderName,
+        },
       });
 
-      // Simulate API call delay
+      if (error) {
+        toast({
+          title: "Payment Method Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log('Payment method created:', paymentMethod);
+
+      // In a real implementation, you would:
+      // 1. Send the payment method to your backend
+      // 2. Create a payment intent on your backend
+      // 3. Confirm the payment
+
+      // For demo purposes, simulate successful payment
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
@@ -124,29 +137,6 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
     }
   };
 
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatExpiryDate = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -170,43 +160,16 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cardNumber">Card Number</Label>
-            <Input
-              id="cardNumber"
-              type="text"
-              placeholder="1234 5678 9012 3456"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-              maxLength={19}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="expiryDate">Expiry Date</Label>
-              <Input
-                id="expiryDate"
-                type="text"
-                placeholder="MM/YY"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(formatExpiryDate(e.target.value))}
-                maxLength={5}
-                required
+            <Label>Card Information</Label>
+            <div className="border rounded-md p-3 bg-white">
+              <CardElement
+                options={cardElementOptions}
+                onChange={handleCardChange}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cvv">CVV</Label>
-              <Input
-                id="cvv"
-                type="text"
-                placeholder="123"
-                value={cvv}
-                onChange={(e) => setCvv(e.target.value.replace(/[^0-9]/g, ''))}
-                maxLength={4}
-                required
-              />
-            </div>
+            {cardError && (
+              <p className="text-sm text-red-600">{cardError}</p>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -229,7 +192,7 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
             type="submit" 
             className="w-full" 
             size="lg" 
-            disabled={isProcessing}
+            disabled={isProcessing || !stripe}
           >
             {isProcessing ? "Processing..." : `Pay $${total.toFixed(2)}`}
           </Button>

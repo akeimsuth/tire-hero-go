@@ -10,6 +10,7 @@ import { useState } from "react";
 import RatingModal from "@/components/RatingModal";
 import StripePaymentForm from "@/components/StripePaymentForm";
 import SavedPaymentMethods from "@/components/SavedPaymentMethods";
+import StripeElementsWrapper from "@/components/StripeElementsWrapper";
 
 const PaymentFlow = () => {
   const [tipAmount, setTipAmount] = useState("");
@@ -211,7 +212,7 @@ const PaymentFlow = () => {
                 )}
 
                 {paymentMethod === "new" && (
-                  <StripePaymentForm
+                  <StripeElementsWrapper
                     total={total}
                     onPaymentSuccess={handlePaymentSuccess}
                   />
