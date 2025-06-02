@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,11 +8,15 @@ import { Wrench, CreditCard, DollarSign, Star, Shield, ArrowLeft } from "lucide-
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import RatingModal from "@/components/RatingModal";
+import StripePaymentForm from "@/components/StripePaymentForm";
+import SavedPaymentMethods from "@/components/SavedPaymentMethods";
 
 const PaymentFlow = () => {
   const [tipAmount, setTipAmount] = useState("");
   const [selectedTip, setSelectedTip] = useState("");
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"saved" | "new">("saved");
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>();
   
   const jobDetails = {
     id: "JOB-001",
@@ -35,6 +38,11 @@ const PaymentFlow = () => {
 
   const handleCompletePayment = () => {
     // After payment is processed, show the rating modal
+    setShowRatingModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Handle successful payment
     setShowRatingModal(true);
   };
 
@@ -168,7 +176,7 @@ const PaymentFlow = () => {
             </CardContent>
           </Card>
 
-          {/* Payment Method */}
+          {/* Payment Method Selection */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -177,15 +185,47 @@ const PaymentFlow = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <CreditCard className="h-6 w-6 text-gray-500" />
-                  <div>
-                    <p className="font-medium">•••• •••• •••• 4242</p>
-                    <p className="text-sm text-gray-600">Visa ending in 4242</p>
-                  </div>
+              <div className="space-y-4">
+                <div className="flex space-x-4">
+                  <Button
+                    variant={paymentMethod === "saved" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("saved")}
+                    className="flex-1"
+                  >
+                    Use Saved Card
+                  </Button>
+                  <Button
+                    variant={paymentMethod === "new" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("new")}
+                    className="flex-1"
+                  >
+                    New Card
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm">Change</Button>
+
+                {paymentMethod === "saved" && (
+                  <SavedPaymentMethods
+                    onSelectPaymentMethod={setSelectedPaymentMethodId}
+                    selectedPaymentMethodId={selectedPaymentMethodId}
+                  />
+                )}
+
+                {paymentMethod === "new" && (
+                  <StripePaymentForm
+                    total={total}
+                    onPaymentSuccess={handlePaymentSuccess}
+                  />
+                )}
+
+                {paymentMethod === "saved" && selectedPaymentMethodId && (
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={handleCompletePayment}
+                  >
+                    Complete Payment - ${total.toFixed(2)}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -196,15 +236,13 @@ const PaymentFlow = () => {
             <span>Your payment is secured with 256-bit SSL encryption</span>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <Button className="w-full" size="lg" onClick={handleCompletePayment}>
-              Complete Payment - ${total.toFixed(2)}
-            </Button>
-            <Button variant="outline" className="w-full">
-              Pay Later (Add to Wallet)
-            </Button>
-          </div>
+          {paymentMethod === "saved" && !selectedPaymentMethodId && (
+            <div className="space-y-3">
+              <Button variant="outline" className="w-full">
+                Pay Later (Add to Wallet)
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
