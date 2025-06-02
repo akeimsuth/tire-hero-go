@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench, User, UserCheck, Shield } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [customerData, setCustomerData] = useState({ email: '', password: '' });
@@ -17,7 +18,7 @@ const Login = () => {
   const [isProviderSubmitting, setIsProviderSubmitting] = useState(false);
   const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleCustomerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +29,11 @@ const Login = () => {
       const isSuccess = Math.random() > 0.3;
       
       if (isSuccess) {
+        await login(customerData.email, customerData.password, 'customer');
         toast({
           title: "Login Successful!",
           description: "Welcome back! Redirecting to your dashboard...",
         });
-        setTimeout(() => navigate('/dashboard'), 1000);
       } else {
         toast({
           title: "Login Failed",
@@ -60,11 +61,11 @@ const Login = () => {
       const isSuccess = Math.random() > 0.3;
       
       if (isSuccess) {
+        await login(providerData.email, providerData.password, 'provider');
         toast({
           title: "Login Successful!",
           description: "Welcome back! Redirecting to your provider dashboard...",
         });
-        setTimeout(() => navigate('/provider/dashboard'), 1000);
       } else {
         toast({
           title: "Login Failed",
@@ -90,15 +91,14 @@ const Login = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Check for admin credentials (you can customize this)
       const isValidAdmin = adminData.email === 'admin@mytireplug.com' && adminData.password === 'admin123';
       
       if (isValidAdmin) {
+        await login(adminData.email, adminData.password, 'admin');
         toast({
           title: "Admin Login Successful!",
           description: "Welcome to the admin panel! Redirecting...",
         });
-        setTimeout(() => navigate('/admin'), 1000);
       } else {
         toast({
           title: "Admin Login Failed",

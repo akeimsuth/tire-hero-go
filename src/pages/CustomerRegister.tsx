@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CustomerRegister = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,7 @@ const CustomerRegister = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,22 +35,15 @@ const CustomerRegister = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate random success/failure for demo
       const isSuccess = Math.random() > 0.3;
       
       if (isSuccess) {
+        await login(formData.email, formData.password, 'customer');
         toast({
           title: "Registration Successful!",
           description: "Welcome to My Tire Plug! You can now start booking services.",
         });
-        
-        // Redirect to dashboard after successful registration
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1000);
       } else {
         toast({
           title: "Registration Failed",
