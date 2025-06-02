@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
+  optimizeDeps: {
+    include: ['react-map-gl'], 
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

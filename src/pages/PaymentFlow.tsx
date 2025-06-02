@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,12 +5,42 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Wrench, CreditCard, DollarSign, Star, Shield, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import RatingModal from "@/components/modals/RatingModal";
+import { serviceRequestAPI } from "@/services/api";
+import StripePaymentForm from "@/components/modals/StripePaymentForm";
+import SavedPaymentMethods from "@/components/modals/SavedPaymentMethods";
+import StripeElementsWrapper from "@/components/modals/StripeElementsWrapper";
 
 const PaymentFlow = () => {
   const [tipAmount, setTipAmount] = useState("");
+  const params = useParams();
+  const navigate = useNavigate();
   const [selectedTip, setSelectedTip] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"saved" | "new">("new");
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>();
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [client, setClient] = useState({
+    documentId: "",
+    customer: {
+      documentId: "",
+      fullName: "",
+    },
+    serviceType: "",
+    location: {
+      address: "",
+    },
+    budget: "",
+    accepted_bid: {
+      documentId: "",
+      provider: {
+        businessName: "",
+        documentId: "",
+        rating: 5
+      },
+    },
+  });
   
   const jobDetails = {
     id: "JOB-001",
@@ -24,12 +53,36 @@ const PaymentFlow = () => {
 
   const suggestedTips = ["15%", "20%", "25%"];
 
+  const getRequest = async () => {
+    const response = await serviceRequestAPI.getById(params.id);
+    setClient(response.data);
+  };
+
+  const closeRatingModal = () =>{
+    setShowRatingModal(false);
+    navigate("/dashboard");
+  }
+
   const calculateTip = (percentage: string) => {
     const percent = parseInt(percentage.replace('%', ''));
     return (jobDetails.baseCost * percent / 100).toFixed(2);
   };
 
   const total = jobDetails.baseCost + jobDetails.serviceFee + (tipAmount ? parseFloat(tipAmount) : 0);
+
+  const handleCompletePayment = () => {
+    // After payment is processed, show the rating modal
+    setShowRatingModal(true);
+  };
+
+    const handlePaymentSuccess = () => {
+    // After payment is processed, show the rating modal
+    setShowRatingModal(true);
+  };
+
+  useEffect(() => {
+    getRequest();
+  },[]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -38,7 +91,7 @@ const PaymentFlow = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <Link to="/tracking" className="flex items-center space-x-2">
-              <ArrowLeft className="h-5 w-5" />
+              {/* <ArrowLeft className="h-5 w-5" /> */}
               <Wrench className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">My Tire Plug</span>
             </Link>
@@ -61,62 +114,31 @@ const PaymentFlow = () => {
           <Card>
             <CardHeader>
               <CardTitle>Service Summary</CardTitle>
-              <CardDescription>Job #{jobDetails.id}</CardDescription>
+              {/* <CardDescription>Job #{jobDetails.id}</CardDescription> */}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Provider</span>
-                  <span className="font-medium">{jobDetails.provider}</span>
+                  <span className="font-medium">{client?.accepted_bid?.provider?.businessName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service</span>
-                  <span className="font-medium">{jobDetails.service}</span>
+                  <span className="font-medium">{client.serviceType}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Provider Rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="font-medium">{jobDetails.rating}/5</span>
+                    <span className="font-medium">{client?.accepted_bid?.provider?.rating}/5</span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Rate Your Experience */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Rate Your Experience</CardTitle>
-              <CardDescription>How was your service today?</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center space-x-2 mb-4">
-                {[1, 2, 3, 4, 5].map((rating) => (
-                  <Button
-                    key={rating}
-                    variant="outline"
-                    size="sm"
-                    className="p-2"
-                  >
-                    <Star className="h-5 w-5" />
-                  </Button>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="review">Leave a review (optional)</Label>
-                <textarea
-                  id="review"
-                  className="w-full p-3 border rounded-lg resize-none"
-                  rows={3}
-                  placeholder="Share your experience..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Add Tip */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <DollarSign className="h-5 w-5" />
@@ -160,7 +182,7 @@ const PaymentFlow = () => {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Payment Breakdown */}
           <Card>
@@ -171,11 +193,11 @@ const PaymentFlow = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Cost</span>
-                  <span>${jobDetails.baseCost.toFixed(2)}</span>
+                  <span>${Number(client.budget).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Fee</span>
-                  <span>${jobDetails.serviceFee.toFixed(2)}</span>
+                  <span>${0.00}</span>
                 </div>
                 {tipAmount && (
                   <div className="flex justify-between">
@@ -186,14 +208,14 @@ const PaymentFlow = () => {
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${Number(client.budget).toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Payment Method */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <CreditCard className="h-5 w-5" />
@@ -212,6 +234,70 @@ const PaymentFlow = () => {
                 <Button variant="outline" size="sm">Change</Button>
               </div>
             </CardContent>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <DollarSign className="h-6 w-6 text-gray-500" />
+                  <div>
+                    <p className="font-medium">Cash</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">Change</Button>
+              </div>
+            </CardContent>
+          </Card> */}
+                   {/* Payment Method Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <CreditCard className="h-5 w-5" />
+                <span>Payment Method</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* <div className="flex space-x-4">
+                  <Button
+                    variant={paymentMethod === "saved" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("saved")}
+                    className="flex-1"
+                  >
+                    Use Saved Card
+                  </Button>
+                  <Button
+                    variant={paymentMethod === "new" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("new")}
+                    className="flex-1"
+                  >
+                    New Card
+                  </Button>
+                </div> */}
+
+                {/* {paymentMethod === "saved" && (
+                  <SavedPaymentMethods
+                    onSelectPaymentMethod={setSelectedPaymentMethodId}
+                    selectedPaymentMethodId={selectedPaymentMethodId}
+                  />
+                )} */}
+
+                {paymentMethod === "new" && (
+                  <StripeElementsWrapper
+                    total={Number(client.budget)}
+                    onPaymentSuccess={handlePaymentSuccess}
+                  />
+                )}
+
+                {paymentMethod === "saved" && selectedPaymentMethodId && (
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={handleCompletePayment}
+                  >
+                    Complete Payment - ${Number(client.budget).toFixed(2)}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
           </Card>
 
           {/* Security Note */}
@@ -221,16 +307,27 @@ const PaymentFlow = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
-            <Button className="w-full" size="lg">
-              Complete Payment - ${total.toFixed(2)}
+          {/* <div className="space-y-3">
+            <Button className="w-full" size="lg" onClick={handleCompletePayment}>
+              Complete Payment - ${Number(client.budget).toFixed(2)}
             </Button>
             <Button variant="outline" className="w-full">
               Pay Later (Add to Wallet)
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
+
+      {/* Rating Modal */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={closeRatingModal}
+        providerName={client?.accepted_bid?.provider?.businessName}
+        serviceType={client.serviceType}
+        customerId={client.customer.documentId}
+        providerId={client.accepted_bid.provider.documentId}
+        jobId={client.documentId}
+      />
     </div>
   );
 };

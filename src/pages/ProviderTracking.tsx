@@ -21,107 +21,54 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import socket from "../socket";
-import MapComponent from "@/components/ui/map-component";
-import AnimatedRouteMap from "@/components/animated-map";
 import { useAuth } from "@/context/AuthContext";
 import moment from "moment";
-import { bidAPI, serviceRequestAPI } from "@/services/api";
-import RatingModal from "@/components/modals/RatingModal";
+import { serviceRequestAPI } from "@/services/api";
+import AnimatedRouteMap from "@/components/animated-map";
 
-const TrackingInterface = () => {
+const ProviderTracking = () => {
   const params = useParams();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
-  const [requests, setRequests] = useState([]);
-  const [complete, setComplete] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const [jobStatus, setJobStatus] = useState("En Route");
-  const [userLocation, setUserLocation] = useState({ lat: 0, lng: 0 });
-  const [estimatedArrival, setEstimatedArrival] = useState("12 minutes");
-  const [selectedRequest, setSelectedRequest] = useState({
-    documentId: "",
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  // Once bid_selected arrives, we store that here.
+  const [status, setStatus] = useState(["idle"]);
+  const [client, setClient] = useState({
+    customer: {
+      documentId: "",
+      fullName: "",
+    },
     serviceType: "",
     location: {
       address: "",
     },
     budget: "",
-    accepted_bid: {
-      documentId: "",
-      provider: {
-        businessName: "",
-        documentId: "",
-      },
-    },
   });
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [jobStatus, setJobStatus] = useState("En Route");
+  const [estimatedArrival, setEstimatedArrival] = useState("12 minutes");
   const customer = { lat: 18.0066873, lng: -76.7913445 }; // New Kingston
   const provider = { lat: 18.0088873, lng: -76.7934445 }; // ~1km away
+
   // Simulate real-time updates
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     const statuses = ["En Route", "Arrived", "In Service"];
-  //     const currentIndex = statuses.indexOf(jobStatus);
-  //     if (currentIndex < statuses.length - 1) {
-  //       setTimeout(() => {
-  //         setJobStatus(statuses[currentIndex + 1]);
-  //         if (statuses[currentIndex + 1] === "Arrived") {
-  //           setEstimatedArrival("Arrived");
-  //         } else if (statuses[currentIndex + 1] === "In Service") {
-  //           setEstimatedArrival("Service in progress");
-  //         }
-  //       }, 15000); // Change status every 15 seconds for demo
-  //     }
-  //   }, 1000);
+  //   useEffect(() => {
+  //     const interval = setInterval(() => {
+  //       const statuses = ["En Route", "Arrived", "In Service"];
+  //       const currentIndex = statuses.indexOf(jobStatus);
+  //       if (currentIndex < statuses.length - 1) {
+  //         setTimeout(() => {
+  //           setJobStatus(statuses[currentIndex + 1]);
+  //           if (statuses[currentIndex + 1] === "Arrived") {
+  //             setEstimatedArrival("Arrived");
+  //           } else if (statuses[currentIndex + 1] === "In Service") {
+  //             setEstimatedArrival("Service in progress");
+  //           }
+  //         }, 15000); // Change status every 15 seconds for demo
+  //       }
+  //     }, 1000);
 
-  //   return () => clearInterval(interval);
-  // }, [jobStatus]);
-
-  useEffect(() => {
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      },
-      (error) => console.error("Error tracking location:", error),
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
-
-  const getRequest = async () => {
-    const response = await serviceRequestAPI.getById(params.id);
-    setSelectedRequest(response.data);
-  };
-  useEffect(() => {
-    // 1. Connect socket and join “customer_<user.id>` room
-    // socket.auth = { userId: user.id, role: 'customer', region: user.region };
-    getRequest();
-    socket.connect();
-    socket.emit("join", {
-      userId: user?.customer.documentId,
-      role: "customer",
-    });
-
-    // 2. Listen for incoming bids
-    //socket.on('new_bid', handleNewBid);
-
-    // 3. Listen for “provider_arrived”, “job_completed”
-    socket.on("provider_arrived", handleProviderArrived);
-    socket.on("job_completed", handleJobCompleted);
-
-    return () => {
-      // cleanup on unmount
-      socket.off("provider_arrived", handleProviderArrived);
-      socket.off("job_completed", handleJobCompleted);
-      socket.disconnect();
-      // Clear any pending timers
-      // Object.values(bidTimersRef.current).forEach((timeoutId: any) => {
-      //   clearTimeout(timeoutId);
-      // });
-    };
-  }, [user?.id]);
+  //     return () => clearInterval(interval);
+  //   }, [jobStatus]);
 
   const jobDetails = {
     id: "TR-001",
@@ -136,82 +83,87 @@ const TrackingInterface = () => {
 
   const statusSteps = [
     { status: "Request Accepted", completed: true, time: "2:30 PM" },
-    // { status: "En Route", completed: jobStatus !== "Request Accepted", time: "2:35 PM" },
+    // {
+    //   status: "En Route",
+    //   completed: jobStatus !== "Request Accepted",
+    //   time: "2:35 PM",
+    // },
     {
       status: "Arrived",
       completed: ["Arrived", "In Service", "Completed"].includes(jobStatus),
       time: estimatedArrival === "Arrived" ? "2:47 PM" : "",
     },
-    { status: "Complete", completed: jobStatus === "Completed", time: "" },
+    {
+      status: "Service Complete",
+      completed: jobStatus === "Completed",
+      time: "",
+    },
   ];
 
-  // 6. Handle “provider_arrived”
-  const handleProviderArrived = (payload) => {
-    const { requestId, providerId, arrivedAt } = payload;
-    console.log("🚩 Customer: provider_arrived", payload);
-    setEstimatedArrival("Arrived");
-    setJobStatus("Arrived");
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId
-          ? { ...r, status: "provider_arrived", arrivedAt }
-          : r
-      )
-    );
+  const getRequest = async () => {
+    const response = await serviceRequestAPI.getById(params.id);
+    setClient(response.data);
   };
 
-  // 7. Handle “job_completed”
-  const handleJobCompleted = (payload) => {
-    const { requestId, providerId, completedAt } = payload;
-    console.log("✅ Customer: job_completed", payload);
-    setJobStatus("Completed");
-    setComplete(true);
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId
-          ? { ...r, status: "job_completed", completedAt }
-          : r
-      )
-    );
-  };
+  useEffect(() => {
+    // 1. Connect socket and join “provider_<region>` room
+    //socket.auth = { userId: user.id, role: 'provider', region: user.region };
+    getRequest();
+    socket.connect();
+    socket.emit("join", { userId: user?.id, role: "provider" });
 
-  // 8. Customer confirms job
-  const confirmJob = async(requestId, providerId) => {
-    // const req = requests.find((r) => r.requestId === requestId);
-    // if (!req || !req.chosenBid) return;
+    // 4. Listen for “job_confirmed” if customer confirms job
+    socket.on("job_confirmed", handleJobConfirmed);
 
-    // const providerId = bidsForRequest[requestId].find((b) => b.bidId === req.chosenBid)
-    //   .providerId;
-    await serviceRequestAPI.update(requestId,{ tireStatus: "Service Completed"});
-    // Emit “job_confirmed”
-    socket.emit("job_confirmed", {
-      requestId,
-      customerId: user.customer?.documentId,
-      providerId,
-      confirmedAt: Date.now(),
+    return () => {
+      socket.off("job_confirmed", handleJobConfirmed);
+      socket.disconnect();
+    };
+  }, [user?.id]);
+
+  const arrivedAtCustomer = async () => {
+    socket.emit("arrived", {
+      requestId: params.id,
+      customerId: client?.customer.documentId,
+      providerId: user.id,
+      arrivedAt: new Date().toISOString(),
     });
+    setStatus([...status, "arrived"]);
+    setJobStatus("Arrived");
+  };
 
-    // Update local state
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId ? { ...r, status: "complete" } : r
-      )
-    );
-    navigate('/payment');
+  // 6. Provider “Complete Job”
+  const completeJob = () => {
+    // if (!selectedRequest) return;
+    // const { requestId } = selectedRequest;
+
+    socket.emit("job_completed", {
+      requestId: params.id,
+      providerId: user.id,
+      customerId: client.customer.documentId,
+      completedAt: new Date().toISOString(),
+    });
+    //setStatus("job_completed");
+  };
+
+  // 7. Handle “job_confirmed” (customer confirmed)
+  const handleJobConfirmed = (payload) => {
+    const { requestId, customerId, confirmedAt } = payload;
+    console.log("🎉 Provider: job_confirmed", payload);
+
+    // setIncomingRequests((prev) =>
+    //   prev.map((r) =>
+    //     r.requestId === requestId ? { ...r, status: "complete" } : r
+    //   )
+    // );
+    setJobStatus("Completed");
+    setStatus([...status.filter(item => item !== "idle"), "complete"]);
+    navigate('/provider/dashboard', { replace: true});
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Header */}
-      <RatingModal
-        isOpen={openModal}
-        onClose={() => setOpenModal(false)}
-        providerName={selectedRequest?.accepted_bid?.provider?.businessName}
-        providerId={selectedRequest?.accepted_bid?.provider?.documentId}
-        customerId={user?.documentId}
-        serviceType={selectedRequest.serviceType}
-        jobId={selectedRequest.documentId}
-      />
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -231,39 +183,41 @@ const TrackingInterface = () => {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Status Banner */}
-        <Card className="mb-8 border-l-4 border-l-blue-600">
+        {/* <Card className="mb-8 border-l-4 border-l-blue-600">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Service Provider {jobStatus}
-                </h2>
+                <h2 className="text-2xl font-bold text-gray-900">Service Provider {jobStatus}</h2>
                 <p className="text-gray-600 mt-1">
-                  {/* {jobStatus === "En Route" && `ETA: ${estimatedArrival}`} */}
-                  {jobStatus === "Arrived" &&
-                    "Your service provider has arrived at your location"}
-                  {jobStatus === "Complete" &&
-                    "Verify that the Service is complete"}
+                  {jobStatus === "En Route" && `ETA: ${estimatedArrival}`}
+                  {jobStatus === "Arrived" && "Your service provider has arrived at your location"}
+                  {jobStatus === "In Service" && "Service is currently in progress"}
                 </p>
               </div>
               <div className="text-right">
-                <Badge
-                  variant={jobStatus === "Completed" ? "default" : "secondary"}
-                  className="text-lg px-4 py-2"
-                >
+                <Badge variant={jobStatus === "Completed" ? "default" : "secondary"} className="text-lg px-4 py-2">
                   {jobStatus}
                 </Badge>
               </div>
             </div>
           </CardContent>
-        </Card>
-        {complete && (
+        </Card> */}
+        {!status.some((s) => ["complete","arrived"].includes(s)) && (
           <Button
-            onClick={() => confirmJob(params.id, 17)}
+            onClick={() => arrivedAtCustomer()}
             variant="default"
             className="w-full p-6 mb-6 font-bold text-xl"
           >
-            Job Completed
+            I AM HERE
+          </Button>
+        )}
+        {!status.some((s) => ["complete","idle"].includes(s)) && (
+          <Button
+            onClick={() => completeJob()}
+            color="green"
+            className="w-full p-6 mb-6 font-bold text-xl"
+          >
+            JOB COMPLETED
           </Button>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -279,19 +233,26 @@ const TrackingInterface = () => {
               </CardHeader>
               <CardContent>
                 <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center object-fit overflow-hidden">
-                  {/* <MapComponent userLocation={userLocation} /> */}
                   <AnimatedRouteMap
                     start={customer}
                     destination={provider}
                     animationDuration={8000} // 8 seconds
                   />
-                  {/* <div className="text-center">
-                    <MapPin className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Live map tracking would appear here</p>
-                    <p className="text-sm text-gray-500 mt-2">Integration with Mapbox/Google Maps</p>
-                  </div> */}
                 </div>
               </CardContent>
+              {/* <CardContent>
+                <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
+                  <div className="text-center">
+                    <MapPin className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                    <p className="text-gray-600">
+                      Live map tracking would appear here
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Integration with Mapbox/Google Maps
+                    </p>
+                  </div>
+                </div>
+              </CardContent> */}
             </Card>
 
             {/* Progress Timeline */}
@@ -340,7 +301,7 @@ const TrackingInterface = () => {
             {/* Provider Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Your Service Provider</CardTitle>
+                <CardTitle>Customer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-3">
@@ -350,7 +311,7 @@ const TrackingInterface = () => {
                   </Avatar>
                   <div>
                     <h4 className="font-semibold">
-                      {selectedRequest?.accepted_bid?.provider?.businessName}
+                      {client.customer?.fullName}
                     </h4>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />
@@ -364,7 +325,7 @@ const TrackingInterface = () => {
                 <div className="space-y-3">
                   <Button className="w-full" variant="outline">
                     <Phone className="h-4 w-4 mr-2" />
-                    Call Provider
+                    Call Customer
                   </Button>
                   <Button className="w-full" variant="outline">
                     <MessageSquare className="h-4 w-4 mr-2" />
@@ -382,25 +343,21 @@ const TrackingInterface = () => {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Service</p>
-                  <p className="font-medium">{selectedRequest.serviceType}</p>
+                  <p className="font-medium">{client.serviceType}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Location</p>
-                  <p className="font-medium">
-                    {selectedRequest?.location?.address}
-                  </p>
+                  <p className="font-medium">{client?.location?.address}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Estimated Cost</p>
-                  <p className="font-medium text-green-600">
-                    ${selectedRequest.budget}
-                  </p>
+                  <p className="font-medium text-green-600">${client.budget}</p>
                 </div>
               </CardContent>
             </Card>
 
             {/* Emergency Actions */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Need Help?</CardTitle>
               </CardHeader>
@@ -415,7 +372,7 @@ const TrackingInterface = () => {
                   Emergency Contact
                 </Button>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>
@@ -423,4 +380,4 @@ const TrackingInterface = () => {
   );
 };
 
-export default TrackingInterface;
+export default ProviderTracking;

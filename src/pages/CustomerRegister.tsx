@@ -4,10 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { authAPI } from "@/services/api";
 
 const CustomerRegister = () => {
+  const navigate = useNavigate();
+    const { toast } = useToast();
+  const { register, customer, user } = useAuth();
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -16,10 +23,57 @@ const CustomerRegister = () => {
     confirmPassword: ''
   });
 
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Customer registration:', formData);
-    // Handle registration logic here
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    register(formData).then(async(res: any) =>{
+          // 1) Extract the Strapi‐assigned user ID and JWT
+    const userId = res?.user?.id;              // correct numeric ID
+    const documentId = res?.user?.documentId; 
+    console.log("DATA: ", res);
+
+    // if (userId) {
+    //   try {
+    //     await authAPI.updateUserAccountType(userId, "customer");
+    //   } catch (updateErr) {
+    //     console.error("Could not set accountType:", updateErr);
+    //     toast({
+    //       title: "Registration Error",
+    //       description: "Account created but failed to set role. Please contact support.",
+    //       variant: "destructive",
+    //     });
+    //     return;
+    //   }
+    // }
+      customer(formData, documentId).then((res) =>{
+        toast({
+          title: "Registration Successful!",
+          description: "Welcome to My Tire Plug! You can now start booking services.",
+        });
+        navigate('/dashboard', { replace: true });
+      }).catch(err => {
+        toast({
+          title: "Registration Failed",
+          description: "Something.",
+          variant: "destructive",
+        });
+      })
+      }).catch( err => {
+        console.log("ERROR: ", err);
+        toast({
+          title: "Registration Failed",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      })
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,6 +103,7 @@ const CustomerRegister = () => {
               Start booking professional tire services
             </CardDescription>
           </CardHeader>
+          <span color="red">{error}</span>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">

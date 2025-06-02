@@ -6,10 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Wrench, ArrowLeft, Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { authAPI } from "@/services/api";
 
 const ProviderRegister = () => {
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const { register, provider, user } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -36,8 +42,42 @@ const ProviderRegister = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Provider registration:', formData);
-    // Handle registration logic here
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.serviceTypes.length === 0) {
+      toast({
+        title: "Service Types Required",
+        description: "Please select at least one service type you offer.",
+        variant: "destructive",
+      });
+      return;
+    }
+    register(formData).then(async(res: any) =>{
+      console.log('Provider data:', res);
+      //await authAPI.updateUserAccountType(res.user?.documentId, "provider");
+      provider(formData, res?.user?.documentId).then((providerRes) =>{
+        toast({
+          title: "Application Submitted!",
+          description: "Your provider application has been submitted successfully. We'll review it within 24 hours.",
+        });
+        navigate('/provider/dashboard', { replace: true });
+      }).catch(err => {
+        toast({
+          title: "Application Failed",
+          description: "Something went wrong. Please check your information and try again.",
+          variant: "destructive",
+        });
+      })
+      }).catch( err => {
+        console.log('Register auth is not authenticated: ', err);
+      })
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -235,7 +275,7 @@ const ProviderRegister = () => {
               </div>
 
               {/* Documents */}
-              <div className="space-y-4">
+              {/* <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Required Documents</h3>
                 <div className="space-y-3">
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -250,7 +290,7 @@ const ProviderRegister = () => {
                     <Button variant="outline" size="sm">Choose File</Button>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Password */}
               <div className="space-y-4">
