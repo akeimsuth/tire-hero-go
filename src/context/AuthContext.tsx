@@ -5,7 +5,7 @@ import { authAPI } from '@/services/api';
 
 
 interface AuthContextType {
-  user: any | null;
+  user: Partial<User> | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: unknown) => Promise<void>;

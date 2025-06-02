@@ -15,7 +15,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { serviceRequestAPI } from "@/services/api";
 import PhotoUpload from "@/components/modals/PhotoUpload";
-import { ServiceRequest, ServiceType } from "@/types/api";
+import { MyFile, ServiceRequest, ServiceType } from "@/types/api";
 import { useAuth } from "@/context/AuthContext";
 import { uploadImagesToStrapi } from "@/services/ImageService";
 import { useToast } from "@/hooks/use-toast";
@@ -81,7 +81,7 @@ const CreateRequest = () => {
         const uploadResult = await uploadImagesToStrapi(selectedFiles);
 
         if (uploadResult.success && uploadResult.data) {
-          uploadedImageIds = uploadResult.data.map((file: any) => file.id);
+          uploadedImageIds = uploadResult.data.map((file: MyFile) => file.id);
           // toast({
           //   title: "Images Uploaded",
           //   description: `Successfully uploaded ${selectedFiles.length} image(s) to Strapi.`,

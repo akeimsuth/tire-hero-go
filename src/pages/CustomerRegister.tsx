@@ -1,6 +1,11 @@
-
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft } from "lucide-react";
@@ -12,17 +17,16 @@ import { authAPI } from "@/services/api";
 
 const CustomerRegister = () => {
   const navigate = useNavigate();
-    const { toast } = useToast();
+  const { toast } = useToast();
   const { register, customer, user } = useAuth();
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: ''
+    fullName: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
   });
-
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,52 +38,57 @@ const CustomerRegister = () => {
       });
       return;
     }
-    register(formData).then(async(res: any) =>{
-          // 1) Extract the Strapi‐assigned user ID and JWT
-    const userId = res?.user?.id;              // correct numeric ID
-    const documentId = res?.user?.documentId; 
-    console.log("DATA: ", res);
+    register(formData)
+      .then(async (res: any) => {
+        // 1) Extract the Strapi‐assigned user ID and JWT
+        const userId = res?.user?.id; // correct numeric ID
+        const documentId = res?.user?.documentId;
+        console.log("DATA: ", res);
 
-    // if (userId) {
-    //   try {
-    //     await authAPI.updateUserAccountType(userId, "customer");
-    //   } catch (updateErr) {
-    //     console.error("Could not set accountType:", updateErr);
-    //     toast({
-    //       title: "Registration Error",
-    //       description: "Account created but failed to set role. Please contact support.",
-    //       variant: "destructive",
-    //     });
-    //     return;
-    //   }
-    // }
-      customer(formData, documentId).then((res) =>{
-        toast({
-          title: "Registration Successful!",
-          description: "Welcome to My Tire Plug! You can now start booking services.",
-        });
-        navigate('/dashboard', { replace: true });
-      }).catch(err => {
-        toast({
-          title: "Registration Failed",
-          description: "Something.",
-          variant: "destructive",
-        });
+        // if (userId) {
+        //   try {
+        //     await authAPI.updateUserAccountType(userId, "customer");
+        //   } catch (updateErr) {
+        //     console.error("Could not set accountType:", updateErr);
+        //     toast({
+        //       title: "Registration Error",
+        //       description: "Account created but failed to set role. Please contact support.",
+        //       variant: "destructive",
+        //     });
+        //     return;
+        //   }
+        // }
+        customer(formData, documentId)
+          .then((res) => {
+            toast({
+              title: "Registration Successful!",
+              description:
+                "Welcome to My Tire Plug! You can now start booking services.",
+            });
+            navigate("/dashboard", { replace: true });
+          })
+          .catch((err) => {
+            toast({
+              title: "Registration Failed",
+              description: "Something.",
+              variant: "destructive",
+            });
+          });
       })
-      }).catch( err => {
+      .catch((err) => {
         console.log("ERROR: ", err);
         toast({
           title: "Registration Failed",
           description: "Something went wrong. Please try again.",
           variant: "destructive",
         });
-      })
+      });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -88,9 +97,14 @@ const CustomerRegister = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
+          <Link
+            to="/"
+            className="flex items-center justify-center space-x-2 mb-4"
+          >
             <Wrench className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">My Tire Plug</span>
+            <span className="text-2xl font-bold text-gray-900">
+              My Tire Plug
+            </span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Join as Customer</h1>
           <p className="text-gray-600">Get tire service at your location</p>
@@ -117,7 +131,7 @@ const CustomerRegister = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -130,7 +144,7 @@ const CustomerRegister = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
@@ -143,7 +157,7 @@ const CustomerRegister = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -156,7 +170,7 @@ const CustomerRegister = () => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -182,7 +196,10 @@ const CustomerRegister = () => {
             Already have an account? Sign in
           </Link>
           <br />
-          <Link to="/" className="text-sm text-gray-600 hover:underline flex items-center justify-center">
+          <Link
+            to="/"
+            className="text-sm text-gray-600 hover:underline flex items-center justify-center"
+          >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Home
           </Link>

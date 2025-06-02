@@ -5,6 +5,17 @@ export interface User {
   email: string;
   role: 'customer' | 'provider';
   profilePhoto?: string;
+  documentId: string;
+  business: {
+    businessName: string;
+    id: Provider;
+  };
+  rating: number;
+  totalJobs: number;
+  customer:{
+    fullName: string;
+    documentId: string;
+  }
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +104,10 @@ export interface Rating {
   rating: number;
   comment: string;
   createdAt: string;
+}
+
+export interface MyFile {
+  id: string;
 }
 
 export type ServiceType = 'flat-repair' | 'tire-change' | 'rotation' | 'balancing' | 'valve-replacement' | 'tire-sales';

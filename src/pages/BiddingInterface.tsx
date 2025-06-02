@@ -106,7 +106,7 @@ const BiddingInterface = () => {
     return () => {
       socket.off('new_bid', handleNewBid);
       socket.disconnect();
-      Object.values(bidTimersRef.current).forEach((timeoutId: any) => {
+      Object.values(bidTimersRef.current).forEach((timeoutId: never) => {
         clearTimeout(timeoutId);
       });
     };
