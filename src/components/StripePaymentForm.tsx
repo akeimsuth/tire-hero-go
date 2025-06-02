@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,9 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CreditCard, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-// Initialize Stripe (replace with your publishable key)
-const stripePromise = loadStripe('pk_test_51234567890abcdef...'); // Replace with your actual publishable key
 
 interface StripePaymentFormProps {
   total: number;
@@ -38,93 +34,68 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
       return;
     }
 
+    // Basic validation for card number (should be 16 digits)
+    const cleanCardNumber = cardNumber.replace(/\s/g, '');
+    if (cleanCardNumber.length < 15 || cleanCardNumber.length > 16) {
+      toast({
+        title: "Invalid Card Number",
+        description: "Please enter a valid card number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic validation for expiry date
+    const [month, year] = expiryDate.split('/');
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear() % 100; // Get last 2 digits
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    if (!month || !year || parseInt(month) < 1 || parseInt(month) > 12) {
+      toast({
+        title: "Invalid Expiry Date",
+        description: "Please enter a valid expiry date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
+      toast({
+        title: "Card Expired",
+        description: "Please use a card that has not expired",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic validation for CVV
+    if (cvv.length < 3 || cvv.length > 4) {
+      toast({
+        title: "Invalid CVV",
+        description: "Please enter a valid CVV",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error('Stripe failed to load');
-      }
-
-      // Create payment method
-      const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: {
-          number: cardNumber,
-          exp_month: parseInt(expiryDate.split('/')[0]),
-          exp_year: parseInt('20' + expiryDate.split('/')[1]),
-          cvc: cvv,
-        },
-        billing_details: {
-          name: cardholderName,
-        },
+      // Simulate payment processing
+      // In a real implementation, you would:
+      // 1. Send card details securely to your backend
+      // 2. Create a payment intent on your backend using Stripe's server-side API
+      // 3. Handle the payment confirmation
+      
+      console.log('Processing payment with details:', {
+        amount: total,
+        cardholderName,
+        cardLast4: cleanCardNumber.slice(-4),
+        saveCard
       });
 
-      if (paymentMethodError) {
-        throw new Error(paymentMethodError.message);
-      }
-
-      // Here you would create a payment intent on your backend
-      // For now, we'll simulate the payment process
-      const response = await fetch('/api/process-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          payment_method_id: paymentMethod.id,
-          amount: Math.round(total * 100), // Convert to cents
-          save_card: saveCard,
-        }),
-      });
-
-      if (!response.ok) {
-        // Fallback to simulation if backend isn't set up
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        toast({
-          title: "Payment Successful",
-          description: `Payment of $${total.toFixed(2)} has been processed successfully.`,
-        });
-        
-        if (saveCard) {
-          toast({
-            title: "Card Saved",
-            description: "Your card has been securely saved for future payments.",
-          });
-        }
-        
-        onPaymentSuccess();
-        return;
-      }
-
-      const result = await response.json();
-      
-      if (result.requires_action) {
-        // Handle 3D Secure or other authentication
-        const { error: confirmError } = await stripe.confirmCardPayment(result.client_secret);
-        if (confirmError) {
-          throw new Error(confirmError.message);
-        }
-      }
-
-      toast({
-        title: "Payment Successful",
-        description: `Payment of $${total.toFixed(2)} has been processed successfully.`,
-      });
-      
-      if (saveCard) {
-        toast({
-          title: "Card Saved",
-          description: "Your card has been securely saved for future payments.",
-        });
-      }
-      
-      onPaymentSuccess();
-
-    } catch (error) {
-      // Simulate successful payment for demo purposes
-      console.log('Stripe integration not fully set up, simulating payment:', error);
+      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
@@ -140,6 +111,14 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
       }
       
       onPaymentSuccess();
+
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      toast({
+        title: "Payment Failed",
+        description: "There was an error processing your payment. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
