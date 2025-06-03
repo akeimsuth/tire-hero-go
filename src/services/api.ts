@@ -151,7 +151,7 @@ export const serviceRequestAPI = {
 };
 
 export const bidAPI = {
-  create: async (bidData: Partial<Bid>) => {
+  create: async (bidData: any) => {
     const response = await apiClient.post("/bids", { data: bidData });
     return response.data;
   },

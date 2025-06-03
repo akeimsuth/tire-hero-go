@@ -153,7 +153,7 @@ const ProviderDashboard = () => {
     const { requestId, customerId, amount } = request;
     const bid = await bidAPI.create({
       requestId,
-      provider: user?.business?.id,
+      provider: user?.business?.documentId,
       amount,
       // estimatedArrival: 5,
       bidStatus: 'pending',

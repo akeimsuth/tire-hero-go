@@ -110,7 +110,7 @@ const ProviderTracking = () => {
     //socket.auth = { userId: user.id, role: 'provider', region: user.region };
     getRequest();
     socket.connect();
-    socket.emit("join", { userId: user?.id, role: "provider" });
+    socket.emit("join", { userId: user?.business?.documentId, role: "provider" });
 
     // 4. Listen for “job_confirmed” if customer confirms job
     socket.on("job_confirmed", handleJobConfirmed);

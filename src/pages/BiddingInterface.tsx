@@ -196,7 +196,7 @@ const handleNewBid = async(bidPayload) => {
       bidId: bidId,
       requestId,
       providerId: providerId,
-      customerId: user?.id,
+      customerId: user?.customer.documentId,
       timestamp: Date.now(),
     });
 
