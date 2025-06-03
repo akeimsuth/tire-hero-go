@@ -110,6 +110,7 @@ const ProviderTracking = () => {
     //socket.auth = { userId: user.id, role: 'provider', region: user.region };
     getRequest();
     socket.connect();
+    console.log('PROVIDER: ', user);
     socket.emit("join", { userId: user?.business?.documentId, role: "provider" });
 
     // 4. Listen for “job_confirmed” if customer confirms job
@@ -124,8 +125,8 @@ const ProviderTracking = () => {
   const arrivedAtCustomer = async () => {
     socket.emit("arrived", {
       requestId: params.id,
-      customerId: client?.customer.documentId,
-      providerId: user.id,
+      customerId: client?.customer?.documentId,
+      providerId: user?.business?.documentId,
       arrivedAt: new Date().toISOString(),
     });
     setStatus([...status, "arrived"]);
@@ -139,7 +140,7 @@ const ProviderTracking = () => {
 
     socket.emit("job_completed", {
       requestId: params.id,
-      providerId: user.id,
+      providerId: user?.business?.documentId,
       customerId: client.customer.documentId,
       completedAt: new Date().toISOString(),
     });
@@ -157,7 +158,7 @@ const ProviderTracking = () => {
     //   )
     // );
     setJobStatus("Completed");
-    setStatus([...status.filter(item => item !== "idle"), "complete"]);
+    setStatus(["complete"]);
     navigate('/provider/dashboard', { replace: true});
   };
 
@@ -173,10 +174,12 @@ const ProviderTracking = () => {
                 My Tire Plug
               </span>
             </Link>
-
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              <Link to="/provider/dashboard">
+                <Button variant="outline">Back to Dashboard</Button>
+              </Link>
+            {/* <Badge variant="secondary" className="bg-blue-100 text-blue-800">
               Job #{jobDetails.id}
-            </Badge>
+            </Badge> */}
           </div>
         </div>
       </div>

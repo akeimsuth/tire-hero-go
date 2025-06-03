@@ -164,8 +164,9 @@ const TrackingInterface = () => {
   // 7. Handle “job_completed”
   const handleJobCompleted = (payload) => {
     const { requestId, providerId, completedAt } = payload;
-    setProvider(providerId);
-    console.log("✅ Customer: job_completed", payload);
+    
+    console.log('PROVID: ', selectedRequest)
+    console.log("✅ Customer: job_completed",payload);
     setJobStatus("Completed");
     setComplete(true);
     setRequests((prev) =>
@@ -189,7 +190,7 @@ const TrackingInterface = () => {
     socket.emit("job_confirmed", {
       requestId,
       customerId: user.customer?.documentId,
-      providerId,
+      providerId: selectedRequest?.accepted_bid?.provider?.documentId,
       confirmedAt: Date.now(),
     });
 
@@ -199,8 +200,12 @@ const TrackingInterface = () => {
         r.requestId === requestId ? { ...r, status: "complete" } : r
       )
     );
-    navigate('/payment');
+    navigate(`/payment/${requestId}`);
   };
+
+  const exitScreen = () => {
+    navigate('/provider/dashboard');
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -261,7 +266,7 @@ const TrackingInterface = () => {
         </Card>
         {complete && (
           <Button
-            onClick={() => confirmJob(params.id, providerI)}
+            onClick={() => confirmJob(params.id, selectedRequest?.accepted_bid?.provider?.documentId)}
             variant="default"
             className="w-full p-6 mb-6 font-bold text-xl"
           >
