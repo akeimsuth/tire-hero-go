@@ -119,7 +119,7 @@ const BiddingInterface = () => {
       console.log('LOCATION: ', request.data);
       socket.emit('new_request', {
         requestId,
-        customerId: user?.id,
+        customerId: user?.customer?.documentId,
         customer: user?.customer?.fullName,
         urgency: "normal",
         location: request.data?.location?.address,

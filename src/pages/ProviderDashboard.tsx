@@ -172,11 +172,11 @@ const ProviderDashboard = () => {
     socket.emit("new_bid", {
       bidId,
       requestId,
-      customerId: 9,
-      providerId: user?.id,
+      customerId: customerId,
+      providerId: user?.business?.documentId,
       provider: {
         name: user?.business?.businessName || 'Sampars',
-        rating: user?.rating,
+        rating: user?.business?.rating,
         completedJobs: user.totalJobs,
         responseTime: 5,
         distance: 2

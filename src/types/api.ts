@@ -10,6 +10,8 @@ export interface User {
   business: {
     businessName: string;
     id: Provider;
+    documentId: string;
+    rating: number;
   };
   rating: number;
   totalJobs: number;

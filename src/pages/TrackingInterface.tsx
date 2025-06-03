@@ -35,6 +35,7 @@ const TrackingInterface = () => {
   const [requests, setRequests] = useState([]);
   const [complete, setComplete] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [providerI, setProvider] = useState("");
   const [jobStatus, setJobStatus] = useState("En Route");
   const [userLocation, setUserLocation] = useState({ lat: 0, lng: 0 });
   const [estimatedArrival, setEstimatedArrival] = useState("12 minutes");
@@ -163,6 +164,7 @@ const TrackingInterface = () => {
   // 7. Handle “job_completed”
   const handleJobCompleted = (payload) => {
     const { requestId, providerId, completedAt } = payload;
+    setProvider(providerId);
     console.log("✅ Customer: job_completed", payload);
     setJobStatus("Completed");
     setComplete(true);
@@ -259,7 +261,7 @@ const TrackingInterface = () => {
         </Card>
         {complete && (
           <Button
-            onClick={() => confirmJob(params.id, 17)}
+            onClick={() => confirmJob(params.id, providerI)}
             variant="default"
             className="w-full p-6 mb-6 font-bold text-xl"
           >

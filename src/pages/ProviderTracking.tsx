@@ -211,7 +211,7 @@ const ProviderTracking = () => {
             I AM HERE
           </Button>
         )}
-        {!status.some((s) => ["complete","idle"].includes(s)) && (
+        {status.length > 1 && (
           <Button
             onClick={() => completeJob()}
             color="green"
