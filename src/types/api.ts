@@ -6,6 +6,7 @@ export interface User {
   role: 'customer' | 'provider';
   profilePhoto?: string;
   documentId: string;
+  accountType: string;
   business: {
     businessName: string;
     id: Provider;

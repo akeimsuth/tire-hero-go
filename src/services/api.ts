@@ -58,13 +58,10 @@ export const authAPI = {
 
   updateUserAccountType: async (userId: string, accountType: string) => {
     const response = await apiClient.put(`/users/${userId}`, {
-      data: {
-        accountType: accountType, // Updating account type
-      },
+      accountType, // Updating account type
     });
     return response.data;
   },
-
 
   customer: async (userData, id) => {
     const response = await apiClient.post("/customers", {
@@ -97,9 +94,7 @@ export const authAPI = {
   },
 
   me: async () => {
-    const response = await apiClient.get(
-      "/users/me?populate=*"
-    );
+    const response = await apiClient.get("/users/me?populate=*");
     return response.data;
   },
 };
@@ -130,10 +125,13 @@ export const serviceRequestAPI = {
     });
     return response.data;
   },
-    getAllCompleted: async (filters?: unknown) => {
-    const response = await apiClient.get("/service-requests?filters[tireStatus][$eq]=Completed", {
-      params: filters,
-    });
+  getAllCompleted: async (filters?: unknown) => {
+    const response = await apiClient.get(
+      "/service-requests?filters[tireStatus][$eq]=Completed",
+      {
+        params: filters,
+      }
+    );
     return response.data;
   },
 

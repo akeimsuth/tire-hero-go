@@ -16,6 +16,7 @@ import PaymentFlow from "./pages/PaymentFlow";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthMiddleware from "@/components/AuthMiddleware";
 import ProviderTracking from "./pages/ProviderTracking";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = ({ user }) => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+        <AuthMiddleware>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -46,6 +48,7 @@ const App = ({ user }) => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+        </AuthMiddleware>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

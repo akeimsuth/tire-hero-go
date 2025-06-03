@@ -45,19 +45,19 @@ const CustomerRegister = () => {
         const documentId = res?.user?.documentId;
         console.log("DATA: ", res);
 
-        // if (userId) {
-        //   try {
-        //     await authAPI.updateUserAccountType(userId, "customer");
-        //   } catch (updateErr) {
-        //     console.error("Could not set accountType:", updateErr);
-        //     toast({
-        //       title: "Registration Error",
-        //       description: "Account created but failed to set role. Please contact support.",
-        //       variant: "destructive",
-        //     });
-        //     return;
-        //   }
-        // }
+        if (userId) {
+          try {
+            await authAPI.updateUserAccountType(userId, "customer");
+          } catch (updateErr) {
+            console.error("Could not set accountType:", updateErr);
+            toast({
+              title: "Registration Error",
+              description: "Account created but failed to set role. Please contact support.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
         customer(formData, documentId)
           .then((res) => {
             toast({

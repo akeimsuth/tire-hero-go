@@ -60,9 +60,24 @@ const ProviderRegister = () => {
       return;
     }
     register(formData).then(async(res: any) =>{
-      console.log('Provider data:', res);
-      //await authAPI.updateUserAccountType(res.user?.documentId, "provider");
-      provider(formData, res?.user?.documentId).then((providerRes) =>{
+        const userId = res?.user?.id; // correct numeric ID
+        const documentId = res?.user?.documentId;
+        console.log("DATA: ", res);
+
+        if (userId) {
+          try {
+            await authAPI.updateUserAccountType(userId, "provider");
+          } catch (updateErr) {
+            console.error("Could not set accountType:", updateErr);
+            toast({
+              title: "Registration Error",
+              description: "Account created but failed to set role. Please contact support.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      provider(formData, documentId).then((providerRes) =>{
         toast({
           title: "Application Submitted!",
           description: "Your provider application has been submitted successfully. We'll review it within 24 hours.",
