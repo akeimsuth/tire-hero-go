@@ -100,7 +100,7 @@ export const authAPI = {
 };
 
 export const serviceRequestAPI = {
-  create: async (requestData: any, id) => {
+  create: async (requestData: any, customerId) => {
     const response = await apiClient.post("/service-requests", {
       data: {
         tireSize: requestData.tireSize,
@@ -110,7 +110,7 @@ export const serviceRequestAPI = {
         urgency: requestData.priority,
         photos: requestData.photos,
         notes: requestData.description,
-        customer: requestData.customer,
+        customer: customerId,
         location: {
           address: requestData.location,
         },

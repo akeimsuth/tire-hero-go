@@ -108,7 +108,7 @@ const CreateRequest = () => {
       setIsUploading(false);
     }
     serviceRequestAPI
-      .create({ ...formData, customer: user?.customer?.documentId, photos: uploadedImageIds }, user.id)
+      .create({ ...formData, photos: uploadedImageIds }, user?.customer?.documentId)
       .then((res) => {
         navigate(`/request/${res?.data.documentId}/bids`, { replace: true });
       })
