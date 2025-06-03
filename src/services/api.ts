@@ -78,7 +78,7 @@ export const authAPI = {
   provider: async (userData, id) => {
     const response = await apiClient.post("/providers", {
       data: {
-        businessName: userData.fullName,
+        businessName: userData.businessName,
         hourlyRate: userData.hourlyRate,
         yearsExperience: userData.experience,
         service_types: userData.serviceTypes,

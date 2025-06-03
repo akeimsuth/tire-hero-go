@@ -33,15 +33,15 @@ const Login = () => {
     setError("");
     login(formData.email, formData.password)
       .then((res) => {
-        if (isCustomer) {
-          toast({
-            title: "Login Successful!",
-            description: "Welcome back!",
-          });
-          navigate("/dashboard", { replace: true });
-        } else {
-          navigate("/provider/dashboard", { replace: true });
-        }
+        toast({
+          title: "Login Successful!",
+          description: "Welcome back!",
+        });
+        // if (isCustomer) {
+        //   navigate("/dashboard", { replace: true });
+        // } else {
+        //   navigate("/provider/dashboard", { replace: true });
+        // }
       })
       .catch((err) => {
         toast({
