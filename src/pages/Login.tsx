@@ -72,9 +72,10 @@ const Login = () => {
           description: "Invalid email or password. Please try again.",
           variant: "destructive",
         });
-      }).finally(() =>{
-        setIsAdminSubmitting(false);
       })
+      .finally(() => {
+        setIsAdminSubmitting(false);
+      });
   };
 
   return (
@@ -168,17 +169,17 @@ const Login = () => {
               </Card>
             </TabsContent>
           </form>
-          <TabsContent value="provider">
-            <Card>
-              <CardHeader>
-                <CardTitle>Provider Login</CardTitle>
-                <CardDescription>
-                  Sign in to manage your tire service business
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Label style={{ color: "red" }}>{error}</Label>
-                <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+          <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+            <TabsContent value="provider">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Provider Login</CardTitle>
+                  <CardDescription>
+                    Sign in to manage your tire service business
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Label style={{ color: "red" }}>{error}</Label>
                   <div className="space-y-2">
                     <Label htmlFor="provider-email">Email</Label>
                     <Input
@@ -205,19 +206,19 @@ const Login = () => {
                       }
                     />
                   </div>
-                </form>
-                <Button className="w-full">Sign In</Button>
-                <div className="text-center">
-                  <Link
-                    to="/provider/register"
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Don't have an account? Apply now
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  <Button className="w-full">Sign In</Button>
+                  <div className="text-center">
+                    <Link
+                      to="/provider/register"
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Don't have an account? Apply now
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </form>
           <TabsContent value="admin">
             <Card>
               <CardHeader>

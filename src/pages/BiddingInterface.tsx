@@ -99,7 +99,7 @@ const BiddingInterface = () => {
     useEffect(() => {
     getRequest();
     socket.connect();
-    socket.emit('join', { userId: user?.id, role: 'customer'});
+    socket.emit('join', { userId: user?.customer?.documentId, role: 'customer'});
 
     socket.on('new_bid', handleNewBid);
 
@@ -145,13 +145,14 @@ const BiddingInterface = () => {
 
 const handleNewBid = async(bidPayload) => {
   const { bidId, requestId } = bidPayload;
-  
+  console.log("New bid received!");
   setBidsForRequest((prev) => {
     if (!Array.isArray(prev)) return [{ ...bidPayload, countdown: 10 }];
 
     return [...prev, { ...bidPayload, countdown: 10 }]; // Initialize countdown at 10s
   });
-  await serviceRequestAPI.update(requestId, {bids: bidId})
+  console.log("processing bid!");
+  await serviceRequestAPI.update(requestId, {bids: bidId});
    // Remove bid after 10 seconds
   const timeoutId = setTimeout(() => {
     console.log("⏳ Removing bid:", bidId); // Debugging

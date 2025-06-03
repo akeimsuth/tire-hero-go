@@ -105,7 +105,7 @@ const ProviderDashboard = () => {
     // 1. Connect socket and join “provider_<region>` room
     //socket.auth = { userId: user.id, role: 'provider', region: user.region };
     socket.connect();
-    socket.emit("join", { userId: user?.id, role: "provider" });
+    socket.emit("join", { userId: user?.business?.documentId, role: "provider" });
 
     // 2. Listen for new requests
     socket.on("new_request", handleNewRequest);
