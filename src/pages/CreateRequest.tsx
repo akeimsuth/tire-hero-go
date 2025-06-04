@@ -139,9 +139,7 @@ const CreateRequest = () => {
               My Tire Plug
             </span>
           </div>
-          {/* <Link to="/dashboard">
-            <Button variant="outline">Back to Dashboard</Button>
-          </Link> */}
+            <Button onClick={() => logout()} variant="outline">Logout</Button>
         </div>
       </header>
 

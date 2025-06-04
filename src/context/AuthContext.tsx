@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Customer, Provider } from '@/types/api';
 import { authAPI } from '@/services/api';
-
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   user: Partial<User> | null;
@@ -20,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+  const navigate = useNavigate();
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
@@ -31,7 +32,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -81,6 +82,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = () => {
     localStorage.removeItem('authToken');
     setUser(null);
+    navigate("/");
   };
 
   const checkAuth = async () => {
@@ -100,8 +102,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkAuth();
   }, []);
 
-  const isCustomer = user?.role === 'customer';
-  const isProvider = user?.role === 'provider';
+  const isCustomer = user?.accountType === 'customer';
+  const isProvider = user?.accountType === 'provider';
 
   return (
     <AuthContext.Provider value={{

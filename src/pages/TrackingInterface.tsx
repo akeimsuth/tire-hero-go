@@ -26,10 +26,12 @@ import AnimatedRouteMap from "@/components/animated-map";
 import { useAuth } from "@/context/AuthContext";
 import moment from "moment";
 import { bidAPI, serviceRequestAPI } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 import RatingModal from "@/components/modals/RatingModal";
 
 const TrackingInterface = () => {
   const params = useParams();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [requests, setRequests] = useState([]);
@@ -111,6 +113,7 @@ const TrackingInterface = () => {
     // 3. Listen for “provider_arrived”, “job_completed”
     socket.on("provider_arrived", handleProviderArrived);
     socket.on("job_completed", handleJobCompleted);
+    socket.on("job_canceled", handleCanceledJob);
 
     return () => {
       // cleanup on unmount
@@ -164,9 +167,6 @@ const TrackingInterface = () => {
   // 7. Handle “job_completed”
   const handleJobCompleted = (payload) => {
     const { requestId, providerId, completedAt } = payload;
-    
-    console.log('PROVID: ', selectedRequest)
-    console.log("✅ Customer: job_completed",payload);
     setJobStatus("Completed");
     setComplete(true);
     setRequests((prev) =>
@@ -178,13 +178,17 @@ const TrackingInterface = () => {
     );
   };
 
-  // 8. Customer confirms job
-  const confirmJob = async(requestId, providerId) => {
-    // const req = requests.find((r) => r.requestId === requestId);
-    // if (!req || !req.chosenBid) return;
+  const handleCanceledJob = () => {
+    toast({
+          title: "Provider Canceled",
+          description: "Provider decided that they no longer want the job.",
+          variant: "destructive",
+    });
+    navigate("/dashboard");
+  }
 
-    // const providerId = bidsForRequest[requestId].find((b) => b.bidId === req.chosenBid)
-    //   .providerId;
+  // 8. Customer confirms job
+  const confirmJob = async(requestId) => {
     await serviceRequestAPI.update(requestId,{ tireStatus: "Service Completed"});
     // Emit “job_confirmed”
     socket.emit("job_confirmed", {
@@ -203,9 +207,25 @@ const TrackingInterface = () => {
     navigate(`/payment/${requestId}`);
   };
 
-  const exitScreen = () => {
-    navigate('/provider/dashboard');
-  }
+  const cancelJob = async(requestId) => {
+    await serviceRequestAPI.update(requestId,{ tireStatus: "Canceled"});
+    // Emit “job_confirmed”
+    socket.emit("customer_canceled", {
+      requestId,
+      customerId: user.customer?.documentId,
+      providerId: selectedRequest?.accepted_bid?.provider?.documentId,
+      confirmedAt: Date.now(),
+    });
+
+    // Update local state
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.requestId === requestId ? { ...r, status: "complete" } : r
+      )
+    );
+    navigate('/dashboard');
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -266,7 +286,7 @@ const TrackingInterface = () => {
         </Card>
         {complete && (
           <Button
-            onClick={() => confirmJob(params.id, selectedRequest?.accepted_bid?.provider?.documentId)}
+            onClick={() => confirmJob(params.id)}
             variant="default"
             className="w-full p-6 mb-6 font-bold text-xl"
           >
@@ -412,7 +432,7 @@ const TrackingInterface = () => {
                 <CardTitle>Need Help?</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full">
+                <Button onClick={() => cancelJob(params.id)} variant="outline" className="w-full">
                   Cancel Service
                 </Button>
                 <Button variant="outline" className="w-full">
