@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Wrench, MapPin, Clock, Star, Phone, MessageSquare, User, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -15,6 +16,7 @@ const BiddingInterface = () => {
   const [bidAmount, setBidAmount] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
   const [bidMessage, setBidMessage] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [bids, setBids] = useState([
     {
       id: 1,
@@ -124,6 +126,7 @@ const BiddingInterface = () => {
     setBidAmount("");
     setArrivalTime("");
     setBidMessage("");
+    setIsDialogOpen(false);
     console.log('Bid submitted:', newBid);
   };
 
@@ -191,58 +194,73 @@ const BiddingInterface = () => {
           </Card>
         </div>
 
-        {/* Provider Bid Submission Form */}
+        {/* Provider Bid Submission Dialog */}
         {user?.type === 'provider' && timeLeft > 0 && (
-          <Card className="mb-8 bg-blue-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-blue-800">Submit Your Bid</CardTitle>
-              <CardDescription>Enter your pricing and availability for this service request</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmitBid} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="bidAmount">Your Price ($)*</Label>
-                    <Input
-                      id="bidAmount"
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      placeholder="85.00"
-                      value={bidAmount}
-                      onChange={(e) => setBidAmount(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="arrivalTime">Estimated Arrival Time*</Label>
-                    <Input
-                      id="arrivalTime"
-                      type="text"
-                      placeholder="30 minutes"
-                      value={arrivalTime}
-                      onChange={(e) => setArrivalTime(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="bidMessage">Message (Optional)</Label>
-                  <Textarea
-                    id="bidMessage"
-                    placeholder="Add any additional information about your service..."
-                    value={bidMessage}
-                    onChange={(e) => setBidMessage(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+          <div className="mb-8 text-center">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700" size="lg">
                   <Send className="h-4 w-4 mr-2" />
-                  Submit Bid
+                  Submit Your Bid
                 </Button>
-              </form>
-            </CardContent>
-          </Card>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[525px]">
+                <DialogHeader>
+                  <DialogTitle>Submit Your Bid</DialogTitle>
+                  <DialogDescription>
+                    Enter your pricing and availability for this service request
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmitBid} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="bidAmount">Your Price ($)*</Label>
+                      <Input
+                        id="bidAmount"
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        placeholder="85.00"
+                        value={bidAmount}
+                        onChange={(e) => setBidAmount(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="arrivalTime">Estimated Arrival Time*</Label>
+                      <Input
+                        id="arrivalTime"
+                        type="text"
+                        placeholder="30 minutes"
+                        value={arrivalTime}
+                        onChange={(e) => setArrivalTime(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="bidMessage">Message (Optional)</Label>
+                    <Textarea
+                      id="bidMessage"
+                      placeholder="Add any additional information about your service..."
+                      value={bidMessage}
+                      onChange={(e) => setBidMessage(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                      <Send className="h-4 w-4 mr-2" />
+                      Submit Bid
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
 
         {/* Bids */}
