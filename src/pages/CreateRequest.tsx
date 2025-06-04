@@ -128,6 +128,11 @@ const CreateRequest = () => {
     });
   };
 
+  const logoutFunc = () => {
+    logout();
+    navigate("/")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -139,7 +144,7 @@ const CreateRequest = () => {
               My Tire Plug
             </span>
           </div>
-            <Button onClick={() => logout()} variant="outline">Logout</Button>
+            <Button onClick={() => logoutFunc()} variant="outline">Logout</Button>
         </div>
       </header>
 
