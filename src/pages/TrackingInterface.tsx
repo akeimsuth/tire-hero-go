@@ -28,9 +28,11 @@ import moment from "moment";
 import { bidAPI, serviceRequestAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import RatingModal from "@/components/modals/RatingModal";
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setSelectedRequest } from '@/store/requestSlice';
 
 const TrackingInterface = () => {
-  const params = useParams();
+  const { id } = useParams();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
@@ -41,21 +43,8 @@ const TrackingInterface = () => {
   const [jobStatus, setJobStatus] = useState("En Route");
   const [userLocation, setUserLocation] = useState({ lat: 0, lng: 0 });
   const [estimatedArrival, setEstimatedArrival] = useState("12 minutes");
-  const [selectedRequest, setSelectedRequest] = useState({
-    documentId: "",
-    serviceType: "",
-    location: {
-      address: "",
-    },
-    budget: "",
-    accepted_bid: {
-      documentId: "",
-      provider: {
-        businessName: "",
-        documentId: "",
-      },
-    },
-  });
+  const dispatch = useAppDispatch();
+  const { selectedRequest } = useAppSelector((state) => state.requests);
   const customer = { lat: 18.0066873, lng: -76.7913445 }; // New Kingston
   const provider = { lat: 18.0088873, lng: -76.7934445 }; // ~1km away
   // Simulate real-time updates
@@ -94,11 +83,12 @@ const TrackingInterface = () => {
   }, []);
 
   const getRequest = async () => {
-    const response = await serviceRequestAPI.getById(params.id);
-    setSelectedRequest(response.data);
+    console.log('ID Customer: ', id);
+    const response = await serviceRequestAPI.getById(id);
+    dispatch(setSelectedRequest(response.data));
   };
   useEffect(() => {
-    // 1. Connect socket and join “customer_<user.id>` room
+    // 1. Connect socket and join "customer_<user.id>` room
     // socket.auth = { userId: user.id, role: 'customer', region: user.region };
     getRequest();
     socket.connect();
@@ -110,7 +100,7 @@ const TrackingInterface = () => {
     // 2. Listen for incoming bids
     //socket.on('new_bid', handleNewBid);
 
-    // 3. Listen for “provider_arrived”, “job_completed”
+    // 3. Listen for "provider_arrived", "job_completed"
     socket.on("provider_arrived", handleProviderArrived);
     socket.on("job_completed", handleJobCompleted);
     socket.on("job_canceled", handleCanceledJob);
@@ -149,7 +139,7 @@ const TrackingInterface = () => {
     { status: "Complete", completed: jobStatus === "Completed", time: "" },
   ];
 
-  // 6. Handle “provider_arrived”
+  // 6. Handle "provider_arrived"
   const handleProviderArrived = (payload) => {
     const { requestId, providerId, arrivedAt } = payload;
     console.log("🚩 Customer: provider_arrived", payload);
@@ -164,7 +154,7 @@ const TrackingInterface = () => {
     );
   };
 
-  // 7. Handle “job_completed”
+  // 7. Handle "job_completed"
   const handleJobCompleted = (payload) => {
     const { requestId, providerId, completedAt } = payload;
     setJobStatus("Completed");
@@ -190,10 +180,10 @@ const TrackingInterface = () => {
   // 8. Customer confirms job
   const confirmJob = async(requestId) => {
     await serviceRequestAPI.update(requestId,{ tireStatus: "Service Completed"});
-    // Emit “job_confirmed”
+    // Emit "job_confirmed"
     socket.emit("job_confirmed", {
-      requestId,
-      customerId: user.customer?.documentId,
+      id,
+      customerId: user?.customer?.documentId,
       providerId: selectedRequest?.accepted_bid?.provider?.documentId,
       confirmedAt: Date.now(),
     });
@@ -209,7 +199,7 @@ const TrackingInterface = () => {
 
   const cancelJob = async(requestId) => {
     await serviceRequestAPI.update(requestId,{ tireStatus: "Canceled"});
-    // Emit “job_confirmed”
+    // Emit "job_confirmed"
     socket.emit("customer_canceled", {
       requestId,
       customerId: user.customer?.documentId,
@@ -236,8 +226,8 @@ const TrackingInterface = () => {
         providerName={selectedRequest?.accepted_bid?.provider?.businessName}
         providerId={selectedRequest?.accepted_bid?.provider?.documentId}
         customerId={user?.documentId}
-        serviceType={selectedRequest.serviceType}
-        jobId={selectedRequest.documentId}
+        serviceType={selectedRequest?.serviceType}
+        jobId={selectedRequest?.documentId}
       />
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -286,7 +276,7 @@ const TrackingInterface = () => {
         </Card>
         {complete && (
           <Button
-            onClick={() => confirmJob(params.id)}
+            onClick={() => confirmJob(id)}
             variant="default"
             className="w-full p-6 mb-6 font-bold text-xl"
           >
@@ -308,8 +298,8 @@ const TrackingInterface = () => {
                 <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center object-fit overflow-hidden">
                   {/* <MapComponent userLocation={userLocation} /> */}
                   <AnimatedRouteMap
-                    start={customer}
-                    destination={provider}
+                    start={provider}
+                    destination={userLocation}
                     animationDuration={8000} // 8 seconds
                   />
                   {/* <div className="text-center">
@@ -409,7 +399,7 @@ const TrackingInterface = () => {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Service</p>
-                  <p className="font-medium">{selectedRequest.serviceType}</p>
+                  <p className="font-medium">{selectedRequest?.serviceType}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Location</p>
@@ -420,7 +410,7 @@ const TrackingInterface = () => {
                 <div>
                   <p className="text-sm text-gray-600">Estimated Cost</p>
                   <p className="font-medium text-green-600">
-                    ${selectedRequest.budget}
+                    ${selectedRequest?.amount}
                   </p>
                 </div>
               </CardContent>

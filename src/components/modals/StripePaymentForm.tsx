@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,20 +7,41 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CreditCard, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { customerAPI } from "@/services/api";
 
 interface StripePaymentFormProps {
   total: number;
   onPaymentSuccess: () => void;
 }
 
+interface SavedCard {
+  id: string;
+  last4: string;
+  brand: string;
+  expMonth: number;
+  expYear: number;
+  name: string;
+}
+
 const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) => {
   const stripe = useStripe();
   const elements = useElements();
+  const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [saveCard, setSaveCard] = useState(false);
   const [cardholderName, setCardholderName] = useState("");
   const [cardError, setCardError] = useState<string | null>(null);
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const { toast } = useToast();
+
+  // Load saved cards from localStorage on component mount
+  useEffect(() => {
+    const savedCardsData = localStorage.getItem('savedCards');
+    if (savedCardsData) {
+      setSavedCards(JSON.parse(savedCardsData));
+    }
+  }, []);
 
   const cardElementOptions = {
     style: {
@@ -47,9 +68,18 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
     }
   };
 
+  const saveCardToLocalStorage = async(cardDetails: SavedCard) => {
+    const updatedCards = [...savedCards, cardDetails];
+    setSavedCards(updatedCards);
+    localStorage.setItem('savedCards', JSON.stringify(updatedCards));
+    await customerAPI.update(user?.customer?.documentId, {
+      saveCard: updatedCards,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+  
     if (!stripe || !elements) {
       toast({
         title: "Stripe not loaded",
@@ -58,7 +88,7 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
       });
       return;
     }
-
+  
     if (!cardholderName.trim()) {
       toast({
         title: "Missing Information",
@@ -67,7 +97,7 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
       });
       return;
     }
-
+  
     const cardElement = elements.getElement(CardElement);
     if (!cardElement) {
       toast({
@@ -77,9 +107,9 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
       });
       return;
     }
-
+  
     setIsProcessing(true);
-
+  
     try {
       // Create payment method
       const { error, paymentMethod } = await stripe.createPaymentMethod({
@@ -89,46 +119,83 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
           name: cardholderName,
         },
       });
-
-      if (error) {
+  
+      if (error || !paymentMethod) {
         toast({
           title: "Payment Method Error",
-          description: error.message,
+          description: error.message || "Unknown error",
           variant: "destructive",
         });
         setIsProcessing(false);
         return;
       }
 
-      console.log('Payment method created:', paymentMethod);
+      // If user chose to save the card
+      if (saveCard && paymentMethod.card) {
+        const cardDetails: SavedCard = {
+          id: paymentMethod.id,
+          last4: paymentMethod.card.last4,
+          brand: paymentMethod.card.brand,
+          expMonth: paymentMethod.card.exp_month,
+          expYear: paymentMethod.card.exp_year,
+          name: cardholderName,
+        };
+        saveCardToLocalStorage(cardDetails);
+      }
 
-      // In a real implementation, you would:
-      // 1. Send the payment method to your backend
-      // 2. Create a payment intent on your backend
-      // 3. Confirm the payment
+      // First, authorize the payment
+      const authorizeResponse = await fetch(`${import.meta.env.VITE_STRIPE_URL}/api/payments/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMethodId: paymentMethod.id,
+          email: user?.email,
+          amount: total * 100, // cents
+          saveCard,
+        }),
+      });
+  
+      const authorizeResult = await authorizeResponse.json();
+  
+      if (!authorizeResponse.ok) {
+        throw new Error(authorizeResult.error || "Authorization failed");
+      }
 
-      // For demo purposes, simulate successful payment
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      // Then, capture the payment
+      const captureResponse = await fetch(`${import.meta.env.VITE_STRIPE_URL}/api/payments/capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentIntentId: authorizeResult.paymentIntentId,
+          amount: total * 100, // cents
+        }),
+      });
+
+      const captureResult = await captureResponse.json();
+
+      if (!captureResponse.ok) {
+        throw new Error(captureResult.error || "Payment capture failed");
+      }
+  
       toast({
         title: "Payment Successful",
         description: `Payment of $${total.toFixed(2)} has been processed successfully.`,
       });
-      
+
       if (saveCard) {
         toast({
           title: "Card Saved",
           description: "Your card has been securely saved for future payments.",
         });
       }
-      
+  
       onPaymentSuccess();
-
-    } catch (error) {
-      console.error('Payment processing error:', error);
+  
+    } catch (err: any) {
+      console.error(err);
       toast({
         title: "Payment Failed",
-        description: "There was an error processing your payment. Please try again.",
+        description: err.message,
         variant: "destructive",
       });
     } finally {
@@ -182,19 +249,18 @@ const StripePaymentForm = ({ total, onPaymentSuccess }: StripePaymentFormProps) 
             </Label>
           </div>
 
-          <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-            <Lock className="h-3 w-3" />
-            <span>Your payment information is encrypted and secure</span>
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full" 
-            size="lg" 
-            disabled={isProcessing || !stripe}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!stripe || isProcessing}
           >
             {isProcessing ? "Processing..." : `Pay $${total.toFixed(2)}`}
           </Button>
+
+          <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+            <Lock className="h-4 w-4" />
+            <span>Your payment information is secure</span>
+          </div>
         </form>
       </CardContent>
     </Card>

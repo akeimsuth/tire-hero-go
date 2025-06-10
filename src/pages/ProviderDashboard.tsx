@@ -22,7 +22,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import socket from "../socket";
 import { bidAPI, serviceRequestAPI } from "@/services/api";
@@ -30,7 +30,20 @@ import moment from "moment";
 import { useToast } from "@/hooks/use-toast";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import WalletComponent from "@/components/modals/WalletComponent";
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setRequests, addRequest, setSelectedRequest } from '@/store/requestSlice';
+import { Input } from "@/components/ui/input";
+import { ServiceRequest, Bid } from "@/types/api";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { setOnlineStatus } from "@/store/slices/providerSlice";
+import { authAPI } from "@/services/api";
 
+interface ExtendedServiceRequest extends ServiceRequest {
+  distance?: string;
+  timePosted?: string;
+  amount?: string;
+}
 
 const ProviderDashboard = () => {
   const { toast } = useToast();
@@ -38,11 +51,18 @@ const ProviderDashboard = () => {
   const navigate = useNavigate();
   const params = useParams();
   const { logout, user } = useAuth();
-  const [isOnline, setIsOnline] = useState(true);
+  const dispatch = useDispatch();
+  const isOnline = useSelector((state: RootState) => state?.provider?.isOnline);
+  // const requestsState = useAppSelector((state) => state?.requests);
+  // const requests = requestsState?.requests || [];
+  // const selectedRequest = requestsState?.selectedRequest || null;
+  const [status, setStatus] = useState("idle");
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  // Once bid_selected arrives, we store that here.
-  const [status, setStatus] = useState("idle");
+  const [bidInputs, setBidInputs] = useState<{ [key: string]: { amount: string; eta: string } }>({});
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [jobHistory, setJobHistory] = useState<ServiceRequest[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const activeRequests = [
     {
@@ -86,37 +106,50 @@ const ProviderDashboard = () => {
     },
   ];
 
-  // const getRequest = () => {
-  //   serviceRequestAPI.getAll().then(res => {
-  //        setIncomingRequests(res.data);
-  //       }).catch(err => {
-  //         console.log("Unable to create request: ", err);
-  //   })
-  // }
-
-  const logoutFunc = () => {
-    logout();
-    navigate("/", { replace: true });
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
   };
-  
 
+  const handleOnlineStatusToggle = async () => {
+    if (!user?.business?.documentId) return;
+
+    try {
+      const newStatus = !isOnline;
+      await authAPI.provider(user.business.documentId, { online: newStatus });
+      dispatch(setOnlineStatus(newStatus));
+      toast({
+        title: "Status Updated",
+        description: `You are now ${newStatus ? "online" : "offline"}`,
+      });
+    } catch (error) {
+      console.error("Error updating online status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update online status. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
-    // 1. Connect socket and join “provider_<region>` room
-    //socket.auth = { userId: user.id, role: 'provider', region: user.region };
     socket.connect();
     socket.emit("join", { userId: user?.business?.documentId, role: "provider" });
 
-    // 2. Listen for new requests
+    // Listen for new requests
     socket.on("new_request", handleNewRequest);
 
-    // 3. Listen for “bid_selected” if this provider’s bid was chosen
+    // Listen for "bid_selected" if this provider's bid was chosen
     socket.on("bid_selected", handleBidSelected);
 
-    // 4. Listen for “job_confirmed” if customer confirms job
+    // Listen for "job_confirmed" if customer confirms job
     socket.on("job_confirmed", handleJobConfirmed);
 
-    // 5. (Optional) If using `bid_expired`, listen for that too
+    // Listen for "bid_expired"
     socket.on("bid_expired", handleBidExpired);
 
     return () => {
@@ -128,7 +161,6 @@ const ProviderDashboard = () => {
     };
   }, [user?.id]);
 
-  // 2. When a new request arrives
   const handleNewRequest = (reqPayload) => {
     //console.log("📨 Provider got new_request:", reqPayload);
     playNotificationSound();
@@ -140,7 +172,7 @@ const ProviderDashboard = () => {
         });
     setIncomingRequests(prev => {
       // If a request with the same ID already exists, return the previous array
-      if (prev.some(r => r.requestId === reqPayload.requestId)) {
+      if (prev.some(r => r?.requestId === reqPayload?.requestId)) {
         return prev;
       }
       // Otherwise, append the new request
@@ -148,232 +180,124 @@ const ProviderDashboard = () => {
     });
   };
 
-  // 3. Provider places a bid on a request
-  const placeBid = async(request) => {
-    const { requestId, customerId, amount } = request;
-    const bid = await bidAPI.create({
-      requestId,
-      provider: user?.business?.documentId,
-      amount,
-      // estimatedArrival: 5,
-      bidStatus: 'pending',
-      notes: "I can help with that"
-    })
-    const bidId = bid.data.documentId; // or uuid
-
-    // You can do validation here, or show a UI to enter quote amount, etc.
-    // const amount = parseFloat(
-    //   prompt("Enter your quote amount (e.g. 30.00):", "30.00")
-    // );
-    // if (!amount || isNaN(amount)) return;
-
-    const quoteDetails = `I can help with that`;
-
-    socket.emit("new_bid", {
-      bidId,
-      requestId,
-      customerId: customerId,
-      providerId: user?.business?.documentId,
-      provider: {
-        name: user?.business?.businessName || 'Sampars',
-        rating: user?.business?.rating,
-        completedJobs: user.totalJobs,
-        responseTime: 5,
-        distance: 2
-      },
-      amount,
-      status: 'pending',
-      message: quoteDetails,
-      submittedAt: Date.now()
-    });
-
-    // Update local UI state so this request is now “bidding”
-    setIncomingRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId ? { ...r, status: "bidding", bidId } : r
-      )
-    );
-    setStatus("bidding");
-  };
-
-  // 4. Handle “bid_selected” (means this provider’s bid was picked)
-  const handleBidSelected = async(payload) => {
-    const { bidId, requestId, customerId } = payload;
-    //console.log("🏆 Provider: bid_selected", payload);
+  const handleBidSelected = (data: { requestId: string; bidId: string }) => {
     toast({
-      title: "Request Accepted!",
-      description: "Customer has been notified. Navigate to the location to begin service.",
+      title: "🎉 Bid Accepted!",
+      description: "Your bid has been accepted. Get ready to serve!",
     });
-    await bidAPI.update({
-      bidStatus: 'accepted'
-    },bidId);
-    // Mark the request as accepted
-    setIncomingRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId ? { ...r, status: "bid_accepted" } : r
-      )
-    );
-    setSelectedRequest({ requestId, customerId });
-    setStatus("Bid Accepted");
-    navigate(`/provider/tracking/${requestId}`, { replace: true });
+    navigate(`/provider/tracking/${data.requestId}`);
   };
 
-  // 5. Provider “Arrive” at customer location
-  const arrivedAtCustomer = () => {
-    if (!selectedRequest) return;
-    const { requestId } = selectedRequest;
-
-    socket.emit("arrived", {
-      requestId,
-      providerId: user?.id,
-      arrivedAt: new Date().toISOString(),
+  const handleJobConfirmed = (data: { requestId: string }) => {
+    toast({
+      title: "✅ Job Confirmed",
+      description: "The customer has confirmed the job completion.",
     });
-    setStatus("arrived");
   };
 
-  // 6. Provider “Complete Job”
-  const completeJob = () => {
-    if (!selectedRequest) return;
-    const { requestId } = selectedRequest;
-
-    socket.emit("job_completed", {
-      requestId,
-      providerId: user?.id,
-      completedAt: new Date().toISOString(),
+  const handleBidExpired = (data: { requestId: string; bidId: string }) => {
+    toast({
+      title: "⏰ Bid Expired",
+      description: "The bidding period for this request has ended.",
     });
-    setStatus("job_completed");
   };
 
-  const handleJobConfirmed = (payload) => {
-    const { requestId, customerId, confirmedAt } = payload;
-    console.log("🎉 Provider: job_confirmed", payload);
+  const placeBid = async (customerId: string, requestId: string, amount: number, estimatedArrival: number, notes: string) => {
+    try {
+      const response = await bidAPI.create({
+        requestId,
+        provider: user?.business?.documentId,
+        amount,
+        estimatedArrival: estimatedArrival.toString(),
+        notes,
+        bidStatus: 'pending'
+      });
+      setStatus('pending');
+      toast({
+        title: "Bid Placed",
+        description: "Your bid has been submitted successfully.",
+      });
 
-    setIncomingRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId ? { ...r, status: "complete" } : r
-      )
-    );
-    setStatus("complete");
+      // Emit socket event to notify customer
+      socket.emit('new_bid', {
+        requestId,
+        bid: response.data,
+        customerId: customerId,
+        bidId: response.data.documentId,
+        amount,
+        estimatedArrival: estimatedArrival.toString(),
+        notes,
+        providerId: user?.business?.documentId,
+        provider: user?.business
+      });
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to place bid. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  // 8. Handle bid_expired (if you want to show the provider their bid wasn’t selected)
-  const handleBidExpired = async(payload) => {
-    const { bidId, requestId } = payload;
-    console.log("⌛ Provider: bid_expired", payload);
-    await bidAPI.update({
-      bidStatus: 'expired'
-    },bidId);
-    setIncomingRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId
-          ? { ...r, status: "bid_expired", expiredBidId: bidId }
-          : r
-      )
-    );
-    setStatus('expired');
-    // Remove the request after 5 seconds
-    setTimeout(() => {
-      setIncomingRequests((prev) => prev.filter((r) => r.requestId !== requestId));
-      console.log(`🚀 Request ${requestId} removed after expiration.`);
-    }, 5000);
+  useEffect(() => {
+    const fetchJobHistory = async () => {
+      if (!user?.business?.documentId) return;
+      
+      setIsLoadingHistory(true);
+      try {
+        const response = await serviceRequestAPI.getAllByProvider(user.business.documentId);
+        setJobHistory(response.data || []);
+      } catch (error) {
+        console.error('Error fetching job history:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load job history. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
 
-  };
+    fetchJobHistory();
+  }, [user?.business?.documentId, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <Link to="/" className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
               <Wrench className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">
                 My Tire Plug
               </span>
-            </Link>
-
+            </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
+              {/* <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Status:</span>
                 <Button
                   variant={isOnline ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setIsOnline(!isOnline)}
+                  onClick={handleOnlineStatusToggle}
                   className={isOnline ? "bg-green-600 hover:bg-green-700" : ""}
                 >
                   {isOnline ? "Online" : "Offline"}
                 </Button>
-              </div>
-
-              <Avatar>
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback>TP</AvatarFallback>
-              </Avatar>
+              </div> */}
+              <Link to="/provider/profile">
+                <Button variant="outline">Edit Profile</Button>
+              </Link>
+              <Button variant="outline" onClick={handleLogout}>
+                Logout
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Today's Earnings
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">$245</p>
-                </div>
-                <DollarSign className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Jobs Completed
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600">12</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Average Rating
-                  </p>
-                  <p className="text-2xl font-bold text-yellow-600">4.8</p>
-                </div>
-                <Star className="h-8 w-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Wallet Balance
-                  </p>
-                  <p className="text-2xl font-bold text-purple-600">$1,250</p>
-                </div>
-                <Wallet className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div> */}
-
         <Tabs defaultValue="requests" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="requests">Available Requests</TabsTrigger>
@@ -388,24 +312,24 @@ const ProviderDashboard = () => {
                 Available Service Requests
               </h3>
               <Badge variant="outline" className="bg-green-50 text-green-700">
-                {incomingRequests.length} New Requests
+                {incomingRequests?.length || 0} New Requests
               </Badge>
             </div>
 
             <div className="grid gap-4">
-              {incomingRequests.map((request) => (
+              {incomingRequests?.map((request) => (
                 <Card
-                  key={request.requestId}
+                  key={request.documentId}
                   className="hover:shadow-md transition-shadow"
                 >
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h4 className="font-semibold text-lg">
-                          {request.serviceType}
+                          {request?.serviceType}
                         </h4>
                         <p className="text-gray-600">
-                          Customer: {request.customer}
+                          Customer: {request?.customer || 'Unknown'}
                         </p>
                       </div>
                       <Badge
@@ -423,43 +347,59 @@ const ProviderDashboard = () => {
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-4 w-4 text-gray-500" />
                         <span className="text-sm text-gray-600">
-                          {request.location}
+                          {request?.location}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <DollarSign className="h-4 w-4 text-gray-500" />
                         <span className="text-sm text-gray-600">
-                          Budget: {request.amount}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
-                          {moment(request.timePosted).fromNow()}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
-                          {request.distance}km away
+                          Budget: {request?.amount || '0'}
                         </span>
                       </div>
                     </div>
 
+                    <div className="flex flex-col md:flex-row md:space-x-4 mb-4">
+                      <div className="flex-1 mb-2 md:mb-0">
+                        <label className="block text-sm font-medium mb-1">Your Price ($)</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={bidInputs[request?.documentId]?.amount || ''}
+                          onChange={e => setBidInputs(inputs => ({ ...inputs, [request?.documentId]: { ...inputs[request.documentId], amount: e.target.value } }))}
+                          placeholder="Enter your price"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium mb-1">ETA (minutes)</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={bidInputs[request?.documentId]?.eta || ''}
+                          onChange={e => setBidInputs(inputs => ({ ...inputs, [request?.documentId]: { ...inputs[request?.documentId], eta: e.target.value } }))}
+                          placeholder="e.g. 15"
+                        />
+                      </div>
+                    </div>
+
                     <div className="flex space-x-3">
-                      {/* <Link
-                        to={`/request/${request.requestId}/bid`}
-                        className="flex-1"
-                      > */}
-                        <Button onClick={() => placeBid(request)} className="w-full">Submit Bid</Button>
-                      {/* </Link> */}
-                      {/* <Button variant="outline">View Details</Button> */}
+                      <Button 
+                        onClick={() => placeBid(
+                          request.customerId,
+                          request.documentId,
+                          Number(bidInputs[request.documentId]?.amount),
+                          Number(bidInputs[request.documentId]?.eta),
+                          "I can help with that"
+                        )} 
+                        className="w-full"
+                      >
+                        Submit Bid
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-            {incomingRequests.length === 0 && (
+            {(!incomingRequests || incomingRequests.length === 0) && (
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-gray-500 mb-4">
@@ -487,51 +427,79 @@ const ProviderDashboard = () => {
             <h3 className="text-lg font-semibold">My Previous Jobs</h3>
 
             <div className="grid gap-4">
-              {myJobs.map((job) => (
-                <Card key={job.id}>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h4 className="font-semibold text-lg">{job.service}</h4>
-                        <p className="text-gray-600">
-                          Customer: {job.customer}
-                        </p>
+              {isLoadingHistory ? (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <p className="text-gray-500 mb-4">Loading job history...</p>
+                    <div className="animate-pulse">
+                      <div className="flex justify-center space-x-1">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                       </div>
-                      <Badge
-                        variant={
-                          job.status === "Completed" ? "default" : "secondary"
-                        }
-                      >
-                        {job.status}
-                      </Badge>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-600">
-                          {job.location}
-                        </span>
-                        <span className="text-lg font-semibold text-green-600">
-                          {job.earnings}
-                        </span>
-                      </div>
-
-                      {job.status === "En Route" && (
-                        <Link to="/tracking">
-                          <Button>Track Job</Button>
-                        </Link>
-                      )}
-
-                      {job.rating && (
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="ml-1 text-sm">{job.rating}/5</span>
-                        </div>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ) : jobHistory.length === 0 ? (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <p className="text-gray-500">No previous jobs found.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                jobHistory.map((job) => (
+                  <Card key={job?.documentId}>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="font-semibold text-lg">{job.serviceType}</h4>
+                          <p className="text-gray-600">
+                            Customer: {job?.customer || 'Unknown'}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            job?.tireStatus === "Completed" ? "default" : "secondary"
+                          }
+                        >
+                          {job?.tireStatus}
+                        </Badge>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-gray-600">
+                            {job.location.address}
+                          </span>
+                          <span className="text-lg font-semibold text-green-600">
+                            ${job?.amount}
+                          </span>
+                        </div>
+
+                        {job?.tireStatus === "In Progress" && (
+                          <Link to={`/provider/tracking/${job?.documentId}`}>
+                            <Button>Track Job</Button>
+                          </Link>
+                        )}
+
+                        {job?.rating && (
+                          <div className="flex items-center">
+                            <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                            <span className="ml-1 text-sm">{job?.rating}/5</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 text-sm text-gray-500">
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>{moment(job.createdAt).format('MMM D, YYYY h:mm A')}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </TabsContent>
 
@@ -559,10 +527,10 @@ const ProviderDashboard = () => {
                   </div>
                 </div>
 
-                <div className="flex space-x-4">
+                {/* <div className="flex space-x-4">
                   <Button className="flex-1">Withdraw Funds</Button>
                   <Button variant="outline">View Statements</Button>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
               <div className="mt-6"></div>
@@ -579,14 +547,16 @@ const ProviderDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex space-x-4">
-                  <Button>Edit Profile</Button>
-                  <Button variant="outline">Update Services</Button>
-                  <Button variant="outline">Set Availability</Button>
-                  <Button variant="outline">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
-                  <Button onClick={logoutFunc} variant="outline">
+                  {/* <Button>Edit Profile</Button> */}
+                    <Button variant="outline">Update Services</Button>
+                    <Button variant="outline">Set Availability</Button>
+                  <Link to="/provider/settings">
+                    <Button variant="outline">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Stripe Settings
+                    </Button>
+                  </Link>
+                  <Button onClick={handleLogout} variant="outline">
                     Logout
                   </Button>
                 </div>

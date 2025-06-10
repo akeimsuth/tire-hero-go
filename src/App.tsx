@@ -3,6 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './store/store';
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import CustomerRegister from "./pages/CustomerRegister";
@@ -18,41 +21,126 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AuthMiddleware from "@/components/AuthMiddleware";
 import ProviderTracking from "./pages/ProviderTracking";
+import ProviderSettings from "./pages/ProviderSettings";
+import ProviderComplete from './pages/ProviderComplete';
+import ProviderProfile from "@/pages/ProviderProfile";
 
 const queryClient = new QueryClient();
-const App = ({ user }) => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-        <AuthMiddleware>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/customer/register" element={<CustomerRegister />} />
-            <Route path="/provider/register" element={<ProviderRegister />} />
 
-            <Route path="/dashboard" element={<CustomerDashboard />} />
-            <Route path="/provider/dashboard" element={<ProviderDashboard />} />
-            <Route path="/request" element={<CreateRequest />} />
-            <Route path="/request/:id/bids" element={<BiddingInterface />} />
-            <Route path="/tracking/:id" element={<TrackingInterface />} />
-            <Route
-              path="/provider/tracking/:id"
-              element={<ProviderTracking />}
-            />
-            <Route path="/payment/:id" element={<PaymentFlow />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthMiddleware>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <BrowserRouter>
+              <AuthProvider>
+                <AuthMiddleware>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/customer/register" element={<CustomerRegister />} />
+                  <Route path="/provider/register" element={<ProviderRegister />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <AuthMiddleware>
+                        <CustomerDashboard />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/provider/dashboard"
+                    element={
+                      <AuthMiddleware>
+                        <ProviderDashboard />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/create-request"
+                    element={
+                      <AuthMiddleware>
+                        <CreateRequest />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/bidding/:id"
+                    element={
+                      <AuthMiddleware>
+                        <BiddingInterface />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/tracking/:id"
+                    element={
+                      <AuthMiddleware>
+                        <TrackingInterface />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/payment/:id"
+                    element={
+                      <AuthMiddleware>
+                        <PaymentFlow />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={
+                      <AuthMiddleware>
+                        <AdminPanel />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/provider/tracking/:id"
+                    element={
+                      <AuthMiddleware>
+                        <ProviderTracking />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/provider/settings"
+                    element={
+                      <AuthMiddleware>
+                        <ProviderSettings />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/provider/complete"
+                    element={
+                      <AuthMiddleware>
+                        <ProviderComplete />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route
+                    path="/provider/profile"
+                    element={
+                      <AuthMiddleware>
+                        <ProviderProfile />
+                      </AuthMiddleware>
+                    }
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                </AuthMiddleware>
+              </AuthProvider>
+            </BrowserRouter>
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </PersistGate>
+    </Provider>
+  );
+}
 
 export default App;

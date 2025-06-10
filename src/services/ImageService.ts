@@ -1,3 +1,5 @@
+import { store } from '@/store/store';
+
 export interface UploadResponse {
   success: boolean;
   data?: any;
@@ -12,7 +14,7 @@ export const uploadImagesToStrapi = async (
     const formData = new FormData();
     const config = {
       apiUrl: import.meta.env.VITE_STRAPI_URL || "http://localhost:1337/api",
-      apiToken: localStorage.getItem('authToken')
+      apiToken: store.getState().auth.token
     }
     files.forEach((file, index) => {
       formData.append('files', file);

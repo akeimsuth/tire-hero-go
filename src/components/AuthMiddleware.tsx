@@ -1,14 +1,14 @@
 // src/middleware/AuthMiddleware.tsx
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAppSelector } from '@/store/hooks';
 
 interface AuthMiddlewareProps {
   children: React.ReactNode;
 }
 
 const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,11 +21,9 @@ const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
   ];
 
   // 2) For authenticated users, redirect them away from public pages:
-  //    e.g. if a logged-in customer tries to go to '/login', send them to '/dashboard'.
-  //    That logic is unchanged, just spelled out here for clarity.
   useEffect(() => {
     if (!isLoading && user && publicPaths.includes(location.pathname)) {
-      switch (user.accountType) {
+      switch (user.role) {
         case 'customer':
           navigate('/dashboard', { replace: true });
           return;
@@ -42,18 +40,18 @@ const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
     }
   }, [user, isLoading, location.pathname, navigate]);
 
-  // 3) Define which roles may access which “protected” routes.
-  //    You can use exact matches or `startsWith` for nested routes:
+  // 3) Define which roles may access which "protected" routes:
   const roleAccessMap: { [pathPrefix: string]: string[] } = {
-    '/dashboard':       ['customer'], 
-    '/provider':        ['provider'], // any route that starts with "/provider"
-    '/admin':           ['admin'],    // any route that starts with "/admin"
-    // Add more if you have subpages, e.g. "/store" → ['customer']
+    '/dashboard': ['customer'],
+    '/create-request': ['customer'],
+    '/tracking': ['customer'],
+    '/payment': ['customer'],
+    '/provider': ['provider'], // any route that starts with "/provider"
+    '/admin': ['admin'], // any route that starts with "/admin"
+    '/bidding': ['customer', 'provider'], // Allow both customers and providers to access bidding
   };
 
-  // 4) Enforce:
-  //    - If not logged in and path is not public → redirect to '/login'
-  //    - If logged in but role is not allowed on this path → redirect to home
+  // 4) Enforce role-based access:
   useEffect(() => {
     if (isLoading) return;
 
@@ -65,15 +63,15 @@ const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
       return;
     }
 
-    // 4b) If user IS authenticated, check if they are allowed here.
+    // 4b) If user IS authenticated, check if they are allowed here
     if (user) {
       // Check each prefix in roleAccessMap to see if pathname starts with it
       for (const [prefix, allowedRoles] of Object.entries(roleAccessMap)) {
         if (pathname === prefix || pathname.startsWith(prefix + '/')) {
-          // This route is protected by role. If user's role not in allowedRoles, redirect.
-          if (!allowedRoles.includes(user.accountType)) {
-            // Send them to their own “home” based on their accountType:
-            switch (user.accountType) {
+          // This route is protected by role. If user's role not in allowedRoles, redirect
+          if (!allowedRoles.includes(user.role)) {
+            // Send them to their own "home" based on their role
+            switch (user.role) {
               case 'customer':
                 navigate('/dashboard', { replace: true });
                 return;
@@ -88,16 +86,14 @@ const AuthMiddleware: React.FC<AuthMiddlewareProps> = ({ children }) => {
                 return;
             }
           }
-          // If their role IS allowed, simply let them stay.
+          // If their role IS allowed, simply let them stay
           return;
         }
       }
-      // If we reach here, the path did not match any protected prefix.
-      // It must be a public path (handled above) or some other page that’s fine for everyone.
     }
   }, [user, isLoading, location.pathname, navigate]);
 
-  // 5) While loading auth state, show a spinner:
+  // 5) While loading auth state, show a spinner
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

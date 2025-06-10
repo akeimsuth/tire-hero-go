@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,19 +7,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Wallet, Plus, CreditCard, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { loadStripe } from '@stripe/stripe-js';
+import { dashboardAPI } from "@/services/api";
 
 // Initialize Stripe (you'll need to replace with your publishable key)
-const stripePromise = loadStripe('pk_test_51RVMbvQQ57EnWXiuH357M8tKFBE2MuK5mVaHzwbLBfZKZyiYTr2JJWlxhjUh0DAE0DjPlHbQHIEl5c0uv5vjzuf800LaV6YRs2'); // Replace with your actual publishable key
+let stripePromise: string = ''; // Replace with your actual publishable key
 
 const WalletComponent = () => {
   const [balance, setBalance] = useState(25.00);
   const [addAmount, setAddAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isAddingFunds, setIsAddingFunds] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [stripeSecretKey, setStripeSecretKey] = useState("");
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const { toast } = useToast();
 
   const quickAmounts = [10, 25, 50, 100];
 
+  useEffect(() => {
+    const fetchStripeSecretKey = async () => {
+      const response = await dashboardAPI.getAPI();
+      setStripeSecretKey(response?.data?.stripeSecretKey);
+    };
+    fetchStripeSecretKey();
+  }, []);
   const handleAddFunds = async () => {
     const amount = parseFloat(addAmount);
     
@@ -44,7 +56,7 @@ const WalletComponent = () => {
     setIsAddingFunds(true);
 
     try {
-      const stripe = await stripePromise;
+      const stripe = await loadStripe(stripeSecretKey);
       if (!stripe) {
         throw new Error('Stripe failed to load');
       }
@@ -108,6 +120,68 @@ const WalletComponent = () => {
     }
   };
 
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    
+    if (!amount || amount < 5) {
+      toast({
+        title: "Invalid Amount",
+        description: "Minimum withdrawal amount is $5.00",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (amount > balance) {
+      toast({
+        title: "Insufficient Balance",
+        description: "You don't have enough funds for this withdrawal.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsWithdrawing(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/providers/withdraw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: Math.round(amount * 100), // Convert to cents
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Withdrawal failed');
+      }
+
+      const result = await response.json();
+      
+      // Update balance
+      setBalance(prevBalance => prevBalance - amount);
+      
+      toast({
+        title: "Withdrawal Successful",
+        description: `$${amount.toFixed(2)} has been withdrawn from your wallet.`,
+      });
+      
+      setWithdrawAmount("");
+      setIsWithdrawModalOpen(false);
+    } catch (error) {
+      console.error('Withdrawal error:', error);
+      toast({
+        title: "Withdrawal Failed",
+        description: "There was an error processing your withdrawal. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   const handleQuickAmount = (amount: number) => {
     setAddAmount(amount.toString());
   };
@@ -138,96 +212,66 @@ const WalletComponent = () => {
           </div>
           
           <div className="flex space-x-3">
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
               <DialogTrigger asChild>
                 <Button className="flex-1">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Funds
+                  Withdraw Funds
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="flex items-center space-x-2">
-                    <CreditCard className="h-5 w-5" />
-                    <span>Add Funds to Wallet</span>
-                  </DialogTitle>
+                  <DialogTitle>Withdraw Funds</DialogTitle>
                 </DialogHeader>
-                
-                <div className="space-y-4">
-                  {/* Quick Amount Buttons */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">
-                      Quick amounts:
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {quickAmounts.map((amount) => (
-                        <Button
-                          key={amount}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleQuickAmount(amount)}
-                        >
-                          ${amount}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Custom Amount Input */}
+                <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Custom amount</Label>
+                    <Label htmlFor="withdrawAmount">Amount to Withdraw</Label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        id="amount"
+                        id="withdrawAmount"
                         type="number"
                         placeholder="0.00"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
                         className="pl-10"
-                        value={addAmount}
-                        onChange={(e) => setAddAmount(e.target.value)}
-                        min="5"
-                        max="500"
-                        step="0.01"
                       />
                     </div>
                     <p className="text-xs text-gray-500">
-                      Minimum: $5.00 • Maximum: $500.00
+                      Minimum withdrawal: $5.00
                     </p>
                   </div>
-                  
-                  {/* Payment powered by Stripe */}
-                  <div className="p-4 border rounded-lg bg-gray-50">
-                    <div className="flex items-center justify-center space-x-2">
-                      <span className="text-sm text-gray-600">Secure payment powered by</span>
-                      <span className="font-semibold text-blue-600">Stripe</span>
-                    </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {quickAmounts.map((amount) => (
+                      <Button
+                        key={amount}
+                        variant="outline"
+                        onClick={() => setWithdrawAmount(amount.toString())}
+                        className="w-full"
+                      >
+                        ${amount}
+                      </Button>
+                    ))}
                   </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3 pt-4">
+
+                  <div className="flex justify-end space-x-2">
                     <Button
                       variant="outline"
-                      className="flex-1"
-                      onClick={() => setIsModalOpen(false)}
-                      disabled={isAddingFunds}
+                      onClick={() => setIsWithdrawModalOpen(false)}
+                      disabled={isWithdrawing}
                     >
                       Cancel
                     </Button>
                     <Button
-                      className="flex-1"
-                      onClick={handleAddFunds}
-                      disabled={isAddingFunds || !addAmount}
+                      onClick={handleWithdraw}
+                      disabled={!withdrawAmount || isWithdrawing}
                     >
-                      {isAddingFunds ? "Processing..." : "Add Funds"}
+                      {isWithdrawing ? "Processing..." : "Withdraw"}
                     </Button>
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
-            
-            <Button variant="outline" className="flex-1">
-              Transaction History
-            </Button>
           </div>
         </CardContent>
       </Card>

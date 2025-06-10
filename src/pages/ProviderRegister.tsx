@@ -59,24 +59,24 @@ const ProviderRegister = () => {
       });
       return;
     }
-    register(formData).then(async(res: any) =>{
+    register({...formData, role: "provider"}).then(async(res: any) =>{
         const userId = res?.user?.id; // correct numeric ID
         const documentId = res?.user?.documentId;
         console.log("DATA: ", res);
 
-        if (userId) {
-          try {
-            await authAPI.updateUserAccountType(userId, "provider");
-          } catch (updateErr) {
-            console.error("Could not set accountType:", updateErr);
-            toast({
-              title: "Registration Error",
-              description: "Account created but failed to set role. Please contact support.",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
+        // if (userId) {
+        //   try {
+        //     await authAPI.updateUserAccountType(userId, "provider");
+        //   } catch (updateErr) {
+        //     console.error("Could not set accountType:", updateErr);
+        //     toast({
+        //       title: "Registration Error",
+        //       description: "Account created but failed to set role. Please contact support.",
+        //       variant: "destructive",
+        //     });
+        //     return;
+        //   }
+        // }
       provider(formData, documentId).then((providerRes) =>{
         toast({
           title: "Application Submitted!",
@@ -216,7 +216,7 @@ const ProviderRegister = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="serviceRadius">Service Radius (km)</Label>
+                    <Label htmlFor="serviceRadius">Service Radius (miles)</Label>
                     <Input
                       id="serviceRadius"
                       name="serviceRadius"

@@ -6,6 +6,7 @@ import {
   WalletTransaction,
   Rating,
 } from "@/types/api";
+import { store } from '@/store/store';
 
 interface RegisterUser {
   jwt: string;
@@ -30,7 +31,7 @@ const apiClient = axios.create({
 
 // Add auth token to requests
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
+  const token = store.getState().auth.token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -51,6 +52,7 @@ export const authAPI = {
       username: userData.email,
       email: userData.email,
       password: userData.password,
+      role: userData.role,
       //accountType: userData.accountType
     });
     return response.data;
@@ -88,6 +90,7 @@ export const authAPI = {
         vehicleSpecs: userData.vehicleDetails,
         // accountType: "provider",
         user: id,
+        online: userData.online,
       },
     });
     return response.data;
@@ -111,9 +114,7 @@ export const serviceRequestAPI = {
         photos: requestData.photos,
         notes: requestData.description,
         customer: customerId,
-        location: {
-          address: requestData.location,
-        },
+        location: requestData.location,
       },
     });
     return response.data;
@@ -123,6 +124,10 @@ export const serviceRequestAPI = {
     const response = await apiClient.get("/service-requests?populate=*", {
       params: filters,
     });
+    return response.data;
+  },
+  getAllByProvider: async (provider?: unknown) => {
+    const response = await apiClient.get(`/service-requests?filters[provider][documentId][$eq]=${provider}&populate=*`);
     return response.data;
   },
   getAllCompleted: async (filters?: unknown) => {
@@ -150,6 +155,32 @@ export const serviceRequestAPI = {
   },
 };
 
+export const adminAPI = {
+  usersCount: async (bidData: any) => {
+    const response = await apiClient.get("/dashboard");
+    return response.data;
+  },
+
+  updateProvider: async (id: string, status: any) => {
+    const response = await apiClient.put(`/providers/${id}`, { data: status });
+    return response.data;
+  },
+
+  getProviders: async () => {
+    const response = await apiClient.get(
+      `/providers?filters[isApproved][$ne]=1&populate=*`
+    );
+    return response.data;
+  },
+
+  accept: async (bidId: string) => {
+    const response = await apiClient.put(`/bids/${bidId}`, {
+      data: { bidStatus: "accepted" },
+    });
+    return response.data;
+  },
+};
+
 export const bidAPI = {
   create: async (bidData: any) => {
     const response = await apiClient.post("/bids", { data: bidData });
@@ -170,8 +201,59 @@ export const bidAPI = {
 
   accept: async (bidId: string) => {
     const response = await apiClient.put(`/bids/${bidId}`, {
-      data: { status: "accepted" },
+      data: { bidStatus: "accepted" },
     });
+    return response.data;
+  },
+};
+
+export const dashboardAPI = {
+  updateHomepage: async (home: any) => {
+    const response = await apiClient.put(`/home`, { data: home });
+    return response.data;
+  },
+
+  updateAPI: async (key: any) => {
+    const response = await apiClient.put(`/api-key`, { data: key });
+    return response.data;
+  },
+
+  getHome: async () => {
+    const response = await apiClient.get(
+      `/home?populate=*`
+    );
+    return response.data;
+  },
+  getAPI: async () => {
+    const response = await apiClient.get(
+      `/api-key`
+    );
+    return response.data;
+  },
+  getDashboardStats: async () => {
+    const response = await apiClient.get(
+      `/statistics`
+    );
+    return response.data;
+  },
+};
+
+
+export const stripeAPI = {
+  create: async (stripeData: any) => {
+    const response = await apiClient.post("/stripes", { data: stripeData });
+    return response.data;
+  },
+
+  update: async (id: string, stripeData: any) => {
+    const response = await apiClient.put(`/stripes/${id}`, { data: stripeData });
+    return response.data;
+  },
+
+  getById: async (providerId: string) => {
+    const response = await apiClient.get(
+      `/stripes?filters[providerId][documentId][$eq]=${providerId}&populate=*`
+    );
     return response.data;
   },
 };
@@ -210,4 +292,88 @@ export const ratingAPI = {
     );
     return response.data;
   },
+};
+
+export const providerAPI = {
+  getById: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/providers/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching provider:", error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, data: {
+    businessName?: string;
+    phoneNumber?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    services?: string;
+    description?: string;
+  }) => {
+    try {
+      const response = await apiClient.put(`/providers/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating provider:", error);
+      throw error;
+    }
+  },
+
+  getStripeStatus: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/providers/${id}/stripe-status`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching Stripe status:", error);
+      throw error;
+    }
+  },
+
+  createStripeAccount: async (id: string) => {
+    try {
+      const response = await apiClient.post(`/providers/${id}/create-stripe-account`);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating Stripe account:", error);
+      throw error;
+    }
+  },
+
+  updateStripeStatus: async (id: string, status: string) => {
+    try {
+      const response = await apiClient.put(`/providers/${id}/stripe-status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating Stripe status:", error);
+      throw error;
+    }
+  }
+};
+
+export const customerAPI = {
+  getById: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/customers/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching provider:", error);
+      throw error;
+    }
+  },
+
+  update: async (id: string, data) => {
+    try {
+      const response = await apiClient.put(`/customers/${id}`, { data: data});
+      return response.data;
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      throw error;
+    }
+  }
 };

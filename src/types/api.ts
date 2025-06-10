@@ -1,9 +1,8 @@
-
 // Core data models matching Strapi collections
 export interface User {
   id: string;
   email: string;
-  role: 'customer' | 'provider';
+  role: 'customer' | 'provider' | 'admin';
   profilePhoto?: string;
   documentId: string;
   accountType: string;
@@ -12,6 +11,10 @@ export interface User {
     id: Provider;
     documentId: string;
     rating: number;
+    stripe: {
+      documentId: string;
+      stripeAccountStatus: string;
+    };
   };
   rating: number;
   totalJobs: number;
@@ -54,8 +57,10 @@ export interface Provider extends User {
 
 export interface ServiceRequest {
   id: string;
+  documentId: string;
   customerId: string;
   customer?: Customer;
+  provider?: number;
   tireSize: string;
   serviceType: ServiceType;
   location: Location;
@@ -64,6 +69,8 @@ export interface ServiceRequest {
   urgency: 'emergency' | 'urgent' | 'standard' | 'scheduled';
   tireStatus: string;//RequestStatus;
   budget?: number;
+  amount?: number;
+  estimatedArrival?: number;
   createdAt: string;
   bids: Bid[];
   accepted_bid?: Bid;

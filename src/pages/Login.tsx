@@ -11,14 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { Wrench, User, UserCheck, Shield } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAppSelector } from "@/store/hooks";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isLoading, login } = useAuth();
+  const { user } = useAppSelector((state) => state.auth);
   const [isCustomer, setIsCustomer] = useState(true);
   const [error, setError] = useState("");
   const [adminData, setAdminData] = useState({ email: "", password: "" });
@@ -28,30 +30,36 @@ const Login = () => {
     password: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Handle navigation after successful login
+  useEffect(() => {
+    if (!isLoading && user) {
+      console.log('User role:', user.role); // Debug log
+      if (user.role === 'customer') {
+        navigate("/dashboard", { replace: true });
+      } else if (user.role === 'provider') {
+        navigate("/provider/dashboard", { replace: true });
+      } else if (user.role === 'admin') {
+        navigate("/admin", { replace: true });
+      }
+    }
+  }, [user, isLoading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    login(formData.email, formData.password)
-      .then((res) => {
-        toast({
-          title: "Login Successful!",
-          description: "Welcome back!",
-        });
-        // if (isCustomer) {
-        //   navigate("/dashboard", { replace: true });
-        // } else {
-        //   navigate("/provider/dashboard", { replace: true });
-        // }
-      })
-      .catch((err) => {
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
-          variant: "destructive",
-        });
-        //setError("Email or Password is incorrect");
-        //console.log('Login auth is not authenticated: ', err);
+    try {
+      await login(formData.email, formData.password);
+      toast({
+        title: "Login Successful!",
+        description: "Welcome back!",
       });
+    } catch (err) {
+      toast({
+        title: "Login Failed",
+        description: "Invalid email or password. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAdminLogin = async (e: React.FormEvent) => {

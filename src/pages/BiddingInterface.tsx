@@ -190,8 +190,13 @@ const handleNewBid = async(bidPayload) => {
     // 4c. Customer selects a bid (within 10s)
   const handleAcceptBid = async(requestId, selectedBid) => {
     const { bidId, providerId } = selectedBid;
-    await serviceRequestAPI.update(requestId, {accepted_bid: bidId, tireStatus: "Accepted"})
-    // Emit “bid_selected” to server
+    await serviceRequestAPI.update(requestId, {
+      accepted_bid: bidId, 
+      tireStatus: "Accepted", 
+      amount: selectedBid.amount, 
+      provider: providerId
+    });
+    // Emit "bid_selected" to server
     socket.emit('bid_selected', {
       bidId: bidId,
       requestId,
@@ -357,7 +362,7 @@ const handleNewBid = async(bidPayload) => {
                     <div className="mt-3">
                       <div className="flex items-center justify-center text-sm text-gray-600">
                         <Clock className="h-4 w-4 mr-1" />
-                        {bid.estimatedTime}
+                        {bid.estimatedArrival} minutes
                       </div>
                     </div>
                   </div>

@@ -1,7 +1,8 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Customer, Provider } from '@/types/api';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import { User } from '@/types/api';
 import { authAPI } from '@/services/api';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setCredentials, setUser, setLoading, logout } from '@/store/authSlice';
 
 interface AuthContextType {
   user: Partial<User> | null;
@@ -17,28 +18,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { user, isLoading } = useAppSelector((state) => state.auth);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await authAPI.login(email, password);
-      localStorage.setItem('authToken', response.jwt);
+      
+      // First, set the credentials with the initial user data and token
+      dispatch(setCredentials({ 
+        user: {
+          ...response.user,
+          //role: response.user?.role?.name // Map accountType to role
+        }, 
+        token: response.jwt 
+      }));
       checkAuth();
+      // Set loading to false since we have the initial data
+      dispatch(setLoading(false));
     } catch (error) {
+      dispatch(logout());
       throw new Error('Login failed');
     }
   };
@@ -46,7 +50,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (userData: unknown) => {
     try {
       const response = await authAPI.register(userData);
-      localStorage.setItem('authToken', response.jwt);
+      dispatch(setCredentials({ 
+        user: {
+          ...response.user,
+          //role: response.user?.role?.name // Map accountType to role
+        }, 
+        token: response.jwt 
+      }));
       checkAuth();
       return response;
     } catch (error) {
@@ -54,66 +64,71 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-    const customer = async (userData: unknown, id) => {
+  const customer = async (userData: unknown, id) => {
     try {
       const response = await authAPI.customer(userData, id);
-      //setUser(response.user);
-      checkAuth();
       console.log('User updated: ', response.data);
     } catch (error) {
       throw new Error('Update user failed');
     }
   };
 
-    const provider = async (userData: unknown, id) => {
+  const provider = async (userData: unknown, id) => {
     try {
       const response = await authAPI.provider(userData, id);
-      //setUser(response.user);
-      checkAuth();
       console.log('User updated: ', response.data);
     } catch (error) {
       throw new Error('Update user failed');
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    setUser(null);
+  const logoutUser = () => {
+    dispatch(logout());
   };
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      try {
-        const userData = await authAPI.me();
-        setUser(userData);
-      } catch (error) {
-        localStorage.removeItem('authToken');
-      }
+    try {
+      const userData = await authAPI.me();
+      dispatch(setUser({
+        ...userData,
+        role: userData?.role?.name // Map accountType to role
+      }));
+    } catch (error) {
+      dispatch(logout());
     }
-    setIsLoading(false);
+    dispatch(setLoading(false));
   };
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  // useEffect(() => {
+  //   checkAuth();
+  // }, [user]);
 
-  const isCustomer = user?.accountType === 'customer';
-  const isProvider = user?.accountType === 'provider';
+  const isCustomer = user?.role?.name === 'customer';
+  const isProvider = user?.role?.name === 'provider';
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      login,
-      register,
-      logout,
-      customer,
-      provider,
-      isCustomer,
-      isProvider
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout: logoutUser,
+        customer,
+        provider,
+        isCustomer,
+        isProvider,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

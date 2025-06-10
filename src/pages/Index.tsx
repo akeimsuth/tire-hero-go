@@ -4,8 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Wrench, MapPin, Clock, Shield, Star, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { dashboardAPI } from "@/services/api";
+import { ICON_MAP } from "@/lib/icon";
 
 const Index = () => {
+  const [home, setHome] = useState();
+  useEffect(() => {
+    const fetchHome = async () => {
+      const response = await dashboardAPI.getHome();
+      setHome({...response.data, Cards: response.data.Cards.map((card: any) => ({...card, icon: ICON_MAP[card.icon]}))});
+    };
+    fetchHome();
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Header */}
@@ -29,13 +40,12 @@ const Index = () => {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl font-bold text-gray-900 mb-6">
-          On-Demand Tire Service
+          {home?.heroHeading1}
           <br />
-          <span className="text-blue-600">Wherever You Are</span>
+          <span className="text-blue-600">{home?.heroHeading2}</span>
         </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Get professional tire repair, replacement, and maintenance services at your location. 
-          Fast, reliable, and affordable mobile tire service.
+          {home?.heroParagraph}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -78,55 +88,18 @@ const Index = () => {
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Flat Tire Repair",
-                description: "Quick patching and plugging for punctures and small holes",
-                icon: Wrench,
-                price: "From $25"
-              },
-              {
-                title: "Tire Replacement",
-                description: "Full tire installation with new or used tires",
-                icon: Shield,
-                price: "From $80"
-              },
-              {
-                title: "Tire Rotation",
-                description: "Professional tire rotation to extend tire life",
-                icon: Clock,
-                price: "From $40"
-              },
-              {
-                title: "Wheel Balancing",
-                description: "Precision balancing for smooth ride quality",
-                icon: Star,
-                price: "From $50"
-              },
-              {
-                title: "Valve Replacement",
-                description: "Tire valve stem replacement and maintenance",
-                icon: Wrench,
-                price: "From $15"
-              },
-              {
-                title: "Emergency Service",
-                description: "24/7 roadside tire assistance and repair",
-                icon: Phone,
-                price: "From $35"
-              }
-            ].map((service, index) => (
+            {home?.Cards?.map((service, index) => (
               <Card key={index} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <service.icon className="h-8 w-8 text-blue-600" />
-                    <Badge variant="secondary">{service.price}</Badge>
+                    <Badge variant="secondary">From ${service.price}</Badge>
                   </div>
                   <CardTitle className="text-xl">{service.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-gray-600">
-                    {service.description}
+                    {service.body}
                   </CardDescription>
                 </CardContent>
               </Card>

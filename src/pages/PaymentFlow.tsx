@@ -18,7 +18,7 @@ const PaymentFlow = () => {
   const params = useParams();
   const navigate = useNavigate();
   const [selectedTip, setSelectedTip] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"saved" | "new">("new");
+  const [paymentMethod, setPaymentMethod] = useState<"saved" | "card">("card");
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>();
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [client, setClient] = useState({
@@ -26,12 +26,13 @@ const PaymentFlow = () => {
     customer: {
       documentId: "",
       fullName: "",
+      paymentMethod: "card" as "card" | "cash",
     },
     serviceType: "",
     location: {
       address: "",
     },
-    budget: "",
+    amount: "",
     accepted_bid: {
       documentId: "",
       provider: {
@@ -40,6 +41,7 @@ const PaymentFlow = () => {
         rating: 5
       },
     },
+    paymentMethod: "card" as "card" | "cash" | "saved",
   });
   
   const jobDetails = {
@@ -193,7 +195,7 @@ const PaymentFlow = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Cost</span>
-                  <span>${Number(client.budget).toFixed(2)}</span>
+                  <span>${Number(client.amount).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Fee</span>
@@ -208,7 +210,7 @@ const PaymentFlow = () => {
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>${Number(client.budget).toFixed(2)}</span>
+                  <span>${Number(client.amount).toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>
@@ -255,56 +257,59 @@ const PaymentFlow = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {/* <div className="flex space-x-4">
-                  <Button
-                    variant={paymentMethod === "saved" ? "default" : "outline"}
-                    onClick={() => setPaymentMethod("saved")}
-                    className="flex-1"
-                  >
-                    Use Saved Card
-                  </Button>
-                  <Button
-                    variant={paymentMethod === "new" ? "default" : "outline"}
-                    onClick={() => setPaymentMethod("new")}
-                    className="flex-1"
-                  >
-                    New Card
-                  </Button>
-                </div> */}
-
-                {/* {paymentMethod === "saved" && (
-                  <SavedPaymentMethods
-                    onSelectPaymentMethod={setSelectedPaymentMethodId}
-                    selectedPaymentMethodId={selectedPaymentMethodId}
-                  />
-                )} */}
-
-                {paymentMethod === "new" && (
-                  <StripeElementsWrapper
-                    total={Number(client.budget)}
-                    onPaymentSuccess={handlePaymentSuccess}
-                  />
-                )}
-
-                {paymentMethod === "saved" && selectedPaymentMethodId && (
+              {client?.customer?.paymentMethod === 'cash' ? (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h3 className="font-medium text-blue-900 mb-2">Cash Payment Instructions</h3>
+                    <p className="text-blue-800">
+                      Please pay ${Number(client.amount).toFixed(2)} in cash to your service provider.
+                    </p>
+                  </div>
                   <Button 
                     className="w-full" 
-                    size="lg" 
-                    onClick={handleCompletePayment}
+                    onClick={() => setShowRatingModal(true)}
                   >
-                    Complete Payment - ${Number(client.budget).toFixed(2)}
+                    Leave a Review
                   </Button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <CreditCard className="h-6 w-6 text-gray-500" />
+                      <div>
+                        <p className="font-medium">Credit Card</p>
+                        <p className="text-sm text-gray-600">Secure payment processing</p>
+                      </div>
+                    </div>
+                  </div>
+                  <StripeElementsWrapper
+                    total={Number(client.amount)}
+                    onPaymentSuccess={handlePaymentSuccess}
+                  />
+                  {/* Security Note */}
+                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                    <Shield className="h-4 w-4" />
+                    <span>Your payment is secured with 256-bit SSL encryption</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Security Note */}
-          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-            <Shield className="h-4 w-4" />
-            <span>Your payment is secured with 256-bit SSL encryption</span>
-          </div>
+          {showRatingModal && client?.accepted_bid?.provider?.businessName && client?.serviceType && client?.customer?.documentId && client?.accepted_bid?.provider?.documentId && client?.documentId && (
+            <RatingModal
+              isOpen={showRatingModal}
+              onClose={closeRatingModal}
+              providerName={client.accepted_bid.provider.businessName}
+              serviceType={client.serviceType}
+              customerId={client.customer.documentId}
+              providerId={client.accepted_bid.provider.documentId}
+              jobId={client.documentId}
+            />
+          )}
+
+
 
           {/* Action Buttons */}
           {/* <div className="space-y-3">
@@ -317,17 +322,6 @@ const PaymentFlow = () => {
           </div> */}
         </div>
       </div>
-
-      {/* Rating Modal */}
-      <RatingModal
-        isOpen={showRatingModal}
-        onClose={closeRatingModal}
-        providerName={client?.accepted_bid?.provider?.businessName}
-        serviceType={client.serviceType}
-        customerId={client.customer.documentId}
-        providerId={client.accepted_bid.provider.documentId}
-        jobId={client.documentId}
-      />
     </div>
   );
 };

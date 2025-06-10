@@ -3,8 +3,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import Map, { Marker, Source, Layer } from 'react-map-gl';
 import * as turf from '@turf/turf';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { dashboardAPI } from '@/services/api';
+import { Loader2 } from 'lucide-react';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+// const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 /**
  * AnimatedRouteMap
@@ -23,11 +25,13 @@ const AnimatedRouteMap = ({ start, destination, animationDuration = 10000 }) => 
     longitude: (start.lng + destination.lng) / 2,
     zoom: 18,
   });
+  const [apiKeys, setAPIKeys] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // 2) Hold the fetched route as a Turf Feature<LineString>
   const [routeFeature, setRouteFeature] = useState(null);
 
-  // 3) Marker’s current position
+  // 3) Marker's current position
   const [markerPosition, setMarkerPosition] = useState({
     latitude: start.lat,
     longitude: start.lng,
@@ -39,16 +43,29 @@ const AnimatedRouteMap = ({ start, destination, animationDuration = 10000 }) => 
   // 5) Ref to store total route length (in kilometers)
   const routeLengthRef = useRef(0);
 
+  useEffect(() => {
+    const fetchAPIKeys = async () => {
+      try {
+        const response = await dashboardAPI.getAPI();
+        setAPIKeys(response?.data?.mapboxKey);
+      } catch (error) {
+        console.error('Error fetching Mapbox key:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAPIKeys();
+  }, []);
+
   // 6) Whenever start/destination change, fetch a new driving route
   useEffect(() => {
-    // If start or destination is missing, do nothing
-    if (!start || !destination) return;
+    if (!apiKeys || !start || !destination) return;
 
     // Build Mapbox Directions API URL
     const coords = `${start.lng},${start.lat};${destination.lng},${destination.lat}`;
     const directionsURL =
       `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}` +
-      `?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+      `?geometries=geojson&overview=full&access_token=${apiKeys}`;
 
     fetch(directionsURL)
       .then((res) => res.json())
@@ -69,7 +86,7 @@ const AnimatedRouteMap = ({ start, destination, animationDuration = 10000 }) => 
         const lengthKm = turf.length(lineFeat, { units: 'kilometers' });
         routeLengthRef.current = lengthKm;
 
-        // Recenter map to route’s bbox
+        // Recenter map to route's bbox
         const [minLng, minLat, maxLng, maxLat] = turf.bbox(lineFeat);
         setViewState((vs) => ({
           ...vs,
@@ -98,9 +115,7 @@ const AnimatedRouteMap = ({ start, destination, animationDuration = 10000 }) => 
       // Cleanup any pending animation frame
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-    // Only re-run when start or destination change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [start, destination]);
+  }, [start, destination, apiKeys]);
 
   // 7) Animate the marker along the route
   const startAnimation = (lineFeature, totalLengthKm) => {
@@ -146,13 +161,29 @@ const AnimatedRouteMap = ({ start, destination, animationDuration = 10000 }) => 
     },
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (!apiKeys) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-600">
+        Unable to load map. Please try again later.
+      </div>
+    );
+  }
+
   return (
     <Map
       {...viewState}
       onMove={(evt) => setViewState(evt.viewState)}
       style={{ width: '100%', height: '100vh' }}
       mapStyle="mapbox://styles/mapbox/streets-v11"
-      mapboxAccessToken={MAPBOX_TOKEN}
+      mapboxAccessToken={apiKeys}
     >
       {/* Only render the route line once we have it */}
       {routeFeature && (

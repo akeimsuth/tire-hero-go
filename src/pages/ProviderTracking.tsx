@@ -25,30 +25,23 @@ import { useAuth } from "@/context/AuthContext";
 import moment from "moment";
 import { serviceRequestAPI } from "@/services/api";
 import AnimatedRouteMap from "@/components/animated-map";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setSelectedRequest } from "@/store/requestSlice";
 
 const ProviderTracking = () => {
-  const params = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  // Once bid_selected arrives, we store that here.
+  const dispatch = useAppDispatch();
+  //const [selectedRequest, setSelectedRequest] = useState(null);
+  const { selectedRequest } = useAppSelector((state) => state.requests);
   const [status, setStatus] = useState(["idle"]);
-  const [client, setClient] = useState({
-    customer: {
-      documentId: "",
-      fullName: "",
-    },
-    serviceType: "",
-    location: {
-      address: "",
-    },
-    budget: "",
-  });
+
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [jobStatus, setJobStatus] = useState("En Route");
   const [estimatedArrival, setEstimatedArrival] = useState("12 minutes");
   const customer = { lat: 18.0066873, lng: -76.7913445 }; // New Kingston
-  const provider = { lat: 18.0088873, lng: -76.7934445 }; // ~1km away
+  //const provider = { lat: 18.0088873, lng: -76.7934445 }; // ~1km away
 
   // Simulate real-time updates
   //   useEffect(() => {
@@ -101,8 +94,9 @@ const ProviderTracking = () => {
   ];
 
   const getRequest = async () => {
-    const response = await serviceRequestAPI.getById(params.id);
-    setClient(response.data);
+    console.log('ID: ', id);
+    const response = await serviceRequestAPI.getById(id);
+    dispatch(setSelectedRequest(response.data));
   };
 
   useEffect(() => {
@@ -124,8 +118,8 @@ const ProviderTracking = () => {
 
   const arrivedAtCustomer = async () => {
     socket.emit("arrived", {
-      requestId: params.id,
-      customerId: client?.customer?.documentId,
+      requestId: id,
+      customerId: selectedRequest?.customer?.documentId,
       providerId: user?.business?.documentId,
       arrivedAt: new Date().toISOString(),
     });
@@ -139,9 +133,9 @@ const ProviderTracking = () => {
     // const { requestId } = selectedRequest;
 
     socket.emit("job_completed", {
-      requestId: params.id,
+      requestId: id,
       providerId: user?.business?.documentId,
-      customerId: client.customer.documentId,
+      customerId: selectedRequest?.customer?.documentId,
       completedAt: new Date().toISOString(),
     });
     //setStatus("job_completed");
@@ -238,7 +232,7 @@ const ProviderTracking = () => {
                 <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center object-fit overflow-hidden">
                   <AnimatedRouteMap
                     start={customer}
-                    destination={provider}
+                    destination={{lat: selectedRequest?.location?.lat, lng: selectedRequest?.location?.lng}}
                     animationDuration={8000} // 8 seconds
                   />
                 </div>
@@ -314,7 +308,7 @@ const ProviderTracking = () => {
                   </Avatar>
                   <div>
                     <h4 className="font-semibold">
-                      {client.customer?.fullName}
+                      {selectedRequest?.customer?.fullName}
                     </h4>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />
@@ -346,15 +340,15 @@ const ProviderTracking = () => {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Service</p>
-                  <p className="font-medium">{client.serviceType}</p>
+                  <p className="font-medium">{selectedRequest?.serviceType}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Location</p>
-                  <p className="font-medium">{client?.location?.address}</p>
+                  <p className="font-medium">{selectedRequest?.location?.address}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Estimated Cost</p>
-                  <p className="font-medium text-green-600">${client.budget}</p>
+                  <p className="font-medium text-green-600">${selectedRequest?.budget}</p>
                 </div>
               </CardContent>
             </Card>
