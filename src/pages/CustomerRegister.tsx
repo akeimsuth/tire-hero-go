@@ -38,13 +38,18 @@ const CustomerRegister = () => {
       });
       return;
     }
-    register({...formData, role: "customer" })
+    register({...formData, role: 6 })
       .then(async (res: any) => {
         // 1) Extract the Strapi‐assigned user ID and JWT
         const userId = res?.user?.id; // correct numeric ID
         const documentId = res?.user?.documentId;
         console.log("DATA: ", res);
-
+        await fetch(`${import.meta.env.VITE_STRAPI_URL}/users/${userId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${res?.jwt}` },
+          body: JSON.stringify({ role: 6 })
+        });
+    
         // if (userId) {
         //   try {
         //     await authAPI.updateUserAccountType(userId, "customer");

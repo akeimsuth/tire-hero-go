@@ -59,11 +59,15 @@ const ProviderRegister = () => {
       });
       return;
     }
-    register({...formData, role: "provider"}).then(async(res: any) =>{
+    register({...formData, role: 5}).then(async(res: any) =>{
         const userId = res?.user?.id; // correct numeric ID
         const documentId = res?.user?.documentId;
         console.log("DATA: ", res);
-
+        await fetch(`${import.meta.env.VITE_STRAPI_URL}/users/${userId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${res?.jwt}` },
+          body: JSON.stringify({ role: 5 })
+        });
         // if (userId) {
         //   try {
         //     await authAPI.updateUserAccountType(userId, "provider");
