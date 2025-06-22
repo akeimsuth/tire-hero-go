@@ -14,7 +14,8 @@ import {
   User,
   Calendar,
   TrendingUp,
-  Wrench
+  Wrench,
+  Image
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +37,11 @@ const ProviderDashboard = () => {
       urgency: "high",
       estimatedPay: 75,
       distance: "2.3 km",
-      description: "Front left tire has a nail puncture, needs immediate repair"
+      description: "Front left tire has a nail puncture, needs immediate repair",
+      images: [
+        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center",
+        "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=300&fit=crop&crop=center"
+      ]
     },
     {
       id: "REQ-002", 
@@ -47,7 +52,10 @@ const ProviderDashboard = () => {
       urgency: "medium",
       estimatedPay: 120,
       distance: "4.1 km",
-      description: "Need to replace worn rear tire, have spare available"
+      description: "Need to replace worn rear tire, have spare available",
+      images: [
+        "https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=400&h=300&fit=crop&crop=center"
+      ]
     }
   ]);
 
@@ -100,7 +108,10 @@ const ProviderDashboard = () => {
           urgency: ["high", "medium", "low"][Math.floor(Math.random() * 3)] as "high" | "medium" | "low",
           estimatedPay: 50 + Math.floor(Math.random() * 100),
           distance: `${(Math.random() * 5 + 1).toFixed(1)} km`,
-          description: "New tire service request"
+          description: "New tire service request",
+          images: [
+            "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center"
+          ]
         };
 
         setActiveRequests(prev => [newRequest, ...prev]);
@@ -271,6 +282,28 @@ const ProviderDashboard = () => {
                       </div>
                       
                       <p className="text-sm">{request.description}</p>
+                      
+                      {/* Customer Images Section */}
+                      {request.images && request.images.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+                            <Image className="h-4 w-4" />
+                            <span>Customer Images ({request.images.length})</span>
+                          </div>
+                          <div className="flex space-x-2 overflow-x-auto">
+                            {request.images.map((image, index) => (
+                              <div key={index} className="flex-shrink-0">
+                                <img
+                                  src={image}
+                                  alt={`Customer uploaded image ${index + 1}`}
+                                  className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(image, '_blank')}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="flex space-x-3 pt-4">
                         <Button 
