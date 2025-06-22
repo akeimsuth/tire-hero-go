@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +19,13 @@ import {
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
+import ProviderApprovalWarning from "@/components/ProviderApprovalWarning";
 
 const ProviderDashboard = () => {
+  // Mock provider approval status - in real app this would come from API/auth context
+  const [isApproved, setIsApproved] = useState(false);
+  const [providerName] = useState("John Provider");
+
   const [activeRequests, setActiveRequests] = useState([
     {
       id: "REQ-001",
@@ -76,6 +80,11 @@ const ProviderDashboard = () => {
 
   const { toast } = useToast();
   const { playNotificationSound } = useNotificationSound();
+
+  // If provider is not approved, show warning screen
+  if (!isApproved) {
+    return <ProviderApprovalWarning providerName={providerName} />;
+  }
 
   // Simulate new request notifications
   useEffect(() => {
