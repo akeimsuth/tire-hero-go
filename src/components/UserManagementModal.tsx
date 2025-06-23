@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { User, Phone, Mail, MapPin, Shield, Calendar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface UserData {
   id: string;
@@ -33,7 +33,14 @@ interface UserManagementModalProps {
 }
 
 const UserManagementModal = ({ user, isOpen, onClose, onSave }: UserManagementModalProps) => {
-  const [editedUser, setEditedUser] = useState<UserData | null>(user);
+  const [editedUser, setEditedUser] = useState<UserData | null>(null);
+
+  // Update editedUser when user prop changes
+  useEffect(() => {
+    if (user) {
+      setEditedUser({ ...user });
+    }
+  }, [user]);
 
   const handleSave = () => {
     if (editedUser) {
@@ -71,7 +78,7 @@ const UserManagementModal = ({ user, isOpen, onClose, onSave }: UserManagementMo
                 {editedUser.type}
               </Badge>
               <Badge variant={
-                editedUser.status === 'active' ? 'default' : 
+                editedUser.status === 'active' || editedUser.status === 'approved' ? 'default' : 
                 editedUser.status === 'pending' ? 'outline' : 'destructive'
               }>
                 {editedUser.status}
@@ -160,7 +167,7 @@ const UserManagementModal = ({ user, isOpen, onClose, onSave }: UserManagementMo
                 <p className="text-sm text-gray-600">Enable or disable user account</p>
               </div>
               <Switch
-                checked={editedUser.status === 'active'}
+                checked={editedUser.status === 'active' || editedUser.status === 'approved'}
                 onCheckedChange={(checked) => 
                   updateField('status', checked ? 'active' : 'inactive')
                 }
