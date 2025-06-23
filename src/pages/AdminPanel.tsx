@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,12 +16,31 @@ import {
   Bell,
   Shield,
   Key,
-  Percent
+  Percent,
+  Eye,
+  Edit
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import ProviderDetailsModal from "@/components/ProviderDetailsModal";
+import UserManagementModal from "@/components/UserManagementModal";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminPanel = () => {
+  const { toast } = useToast();
+  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  
   const [settings, setSettings] = useState({
     messaging: true,
     voip: true,
@@ -43,7 +61,10 @@ const AdminPanel = () => {
       businessName: "John's Mobile Tire Service",
       serviceArea: "Downtown, Midtown",
       submittedDate: "2024-01-15",
-      status: "pending"
+      status: "pending",
+      businessLicense: "BL-2024-001",
+      yearsExperience: 8,
+      specializations: ["Tire Repair", "Tire Replacement", "Emergency Service"]
     },
     {
       id: "2", 
@@ -53,9 +74,42 @@ const AdminPanel = () => {
       businessName: "Quick Tire Fix",
       serviceArea: "Westside, Airport",
       submittedDate: "2024-01-14",
-      status: "pending"
+      status: "pending",
+      businessLicense: "BL-2024-002",
+      yearsExperience: 5,
+      specializations: ["Tire Repair", "Mobile Service"]
     }
   ];
+
+  // Sample user data for user management
+  const [users, setUsers] = useState([
+    {
+      id: "1",
+      name: "John Customer",
+      email: "john@customer.com",
+      phone: "+1 (555) 111-1111",
+      type: "customer" as const,
+      status: "active" as const,
+      joinDate: "2024-01-10",
+      location: "Downtown",
+      totalJobs: 12,
+      rating: 4.8
+    },
+    {
+      id: "2",
+      name: "Sarah Provider",
+      email: "sarah@provider.com",
+      phone: "+1 (555) 222-2222",
+      type: "provider" as const,
+      status: "approved" as const,
+      joinDate: "2024-01-05",
+      businessName: "Sarah's Tire Service",
+      serviceArea: "Westside",
+      totalJobs: 45,
+      rating: 4.9,
+      isVerified: true
+    }
+  ]);
 
   const systemStats = {
     totalUsers: 1247,
@@ -64,6 +118,43 @@ const AdminPanel = () => {
     todayJobs: 34,
     avgRating: 4.6,
     reportedIssues: 3
+  };
+
+  const handleViewProvider = (provider: any) => {
+    setSelectedProvider(provider);
+    setIsProviderModalOpen(true);
+  };
+
+  const handleApproveProvider = (providerId: string) => {
+    toast({
+      title: "Provider Approved",
+      description: "The provider has been successfully approved and can now accept jobs."
+    });
+  };
+
+  const handleRejectProvider = (providerId: string) => {
+    toast({
+      title: "Provider Rejected",
+      description: "The provider application has been rejected.",
+      variant: "destructive"
+    });
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = (userData: any) => {
+    setUsers(prevUsers => 
+      prevUsers.map(user => 
+        user.id === userData.id ? userData : user
+      )
+    );
+    toast({
+      title: "User Updated",
+      description: "User information has been successfully updated."
+    });
   };
 
   return (
@@ -165,8 +256,9 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="providers" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="providers">Provider Approvals</TabsTrigger>
+            <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="settings">System Settings</TabsTrigger>
             <TabsTrigger value="reports">Reports & Issues</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -211,11 +303,16 @@ const AdminPanel = () => {
                       </div>
                       
                       <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleViewProvider(provider)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Details
+                        </Button>
                         <Button size="sm" className="bg-green-600 hover:bg-green-700">
                           Approve
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          Review
                         </Button>
                         <Button size="sm" variant="destructive">
                           Reject
@@ -226,6 +323,65 @@ const AdminPanel = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">User Management</h3>
+              <Badge variant="outline">
+                {users.length} Total Users
+              </Badge>
+            </div>
+            
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Total Jobs</TableHead>
+                      <TableHead>Rating</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.type === 'customer' ? 'default' : 'secondary'}>
+                            {user.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            user.status === 'active' || user.status === 'approved' ? 'default' : 'outline'
+                          }>
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{user.totalJobs}</TableCell>
+                        <TableCell>{user.rating}</TableCell>
+                        <TableCell>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
@@ -421,6 +577,22 @@ const AdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modals */}
+      <ProviderDetailsModal
+        provider={selectedProvider}
+        isOpen={isProviderModalOpen}
+        onClose={() => setIsProviderModalOpen(false)}
+        onApprove={handleApproveProvider}
+        onReject={handleRejectProvider}
+      />
+
+      <UserManagementModal
+        user={selectedUser}
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        onSave={handleSaveUser}
+      />
     </div>
   );
 };
